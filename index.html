@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -17,7 +18,7 @@
       --secondary-color: #7b68ee;
       --bubble-bg: rgba(255, 255, 255, 0.96);
       --text-color: #333333;
-      --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
     }
 
     * {
@@ -41,91 +42,134 @@
       align-items: center;
     }
 
-    /* マスコットコンテナ */
+    /* マスコット＆会話コンテナ（縦全画面） */
     #pet-container {
       position: absolute;
       width: 100%;
-      max-width: 400px;
+      max-width: 440px;
       height: 100%;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 12px) 14px env(safe-area-inset-bottom, 12px) 14px;
+      z-index: 50;
+      box-sizing: border-box;
+    }
+
+    /* 上部ヘッダー（ミニマムステータスバー） */
+    .top-header {
+      width: 100%;
+      display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: env(safe-area-inset-top, 20px) 16px env(safe-area-inset-bottom, 16px) 16px;
-      z-index: 50;
-      touch-action: none;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      font-size: 11px;
+      font-weight: bold;
+      color: #555;
+      z-index: 20;
     }
 
-    /* 吹き出し */
-    .speech-bubble {
-      position: relative;
-      background: var(--bubble-bg);
-      border-radius: 22px;
-      padding: 14px 18px;
-      color: var(--text-color);
-      font-size: 14px;
-      line-height: 1.6;
-      width: 100%;
-      max-width: 360px;
-      min-height: 52px;
-      box-shadow: var(--shadow);
-      border: 2px solid #ffd1dc;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      word-break: break-word;
-      transition: all 0.25s ease;
-      z-index: 10;
-      margin-top: 10px;
+    .model-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: bold;
+      transition: all 0.3s;
     }
+    .model-badge.lite { background: #e0f2fe; color: #0284c7; }
+    .model-badge.pro { background: #fdf4ff; color: #c026d3; }
 
-    .speech-bubble.has-error {
-      border-color: #ef4444;
-      background: #fff5f5;
-      color: #b91c1c;
-    }
-
-    .speech-bubble::after {
-      content: '';
-      position: absolute;
-      bottom: -9px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-width: 9px 9px 0;
-      border-style: solid;
-      border-color: #ffd1dc transparent transparent;
-      display: block;
-      width: 0;
-    }
-
-    /* アバター画像 ＆ 呼吸アニメーション */
-    .pet-avatar-wrapper {
-      position: relative;
+    /* チャット履歴タイムライン（上下スクロール可能） */
+    #chat-timeline {
       flex: 1;
       width: 100%;
-      max-width: 320px;
+      overflow-y: auto;
+      padding: 10px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      margin: 8px 0;
+    }
+
+    #chat-timeline::-webkit-scrollbar {
+      width: 4px;
+    }
+    #chat-timeline::-webkit-scrollbar-thumb {
+      background: rgba(255, 133, 162, 0.3);
+      border-radius: 4px;
+    }
+
+    /* チャット吹き出し */
+    .chat-row {
+      display: flex;
+      width: 100%;
+      animation: fadeIn 0.25s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-row.user { justify-content: flex-end; }
+    .chat-row.model { justify-content: flex-start; }
+
+    .chat-bubble {
+      max-width: 82%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      word-break: break-word;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .chat-row.user .chat-bubble {
+      background: #0284c7;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-row.model .chat-bubble {
+      background: #ffffff;
+      color: #333333;
+      border: 1.5px solid #ffd1dc;
+      border-bottom-left-radius: 4px;
+    }
+
+    /* 下部：みーちゅ本体アバター（操作バーのすぐ上に配置） */
+    .pet-avatar-wrapper {
+      position: relative;
+      width: 100%;
+      height: 190px;
       display: flex;
       justify-content: center;
       align-items: center;
       cursor: pointer;
       animation: cat-breathe 3.5s ease-in-out infinite;
+      z-index: 10;
     }
 
     @keyframes cat-breathe {
       0%, 100% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-5px) scale(1.02, 0.98); }
+      50% { transform: translateY(-4px) scale(1.02, 0.98); }
     }
 
     .pet-avatar {
-      max-width: 85%;
-      max-height: 75vh;
+      height: 100%;
+      max-width: 220px;
       object-fit: contain;
-      filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.12));
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.12));
       transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     .pet-avatar-wrapper:active .pet-avatar {
-      transform: scale(0.96);
+      transform: scale(0.95);
     }
 
     /* なでなでハート演出 */
@@ -140,15 +184,15 @@
 
     @keyframes float-heart {
       0% { opacity: 1; transform: translate(0, 0) scale(0.6); }
-      50% { opacity: 0.9; transform: translate(var(--rx), -40px) scale(1.2); }
-      100% { opacity: 0; transform: translate(var(--rx), -80px) scale(1.4); }
+      50% { opacity: 0.9; transform: translate(var(--rx), -35px) scale(1.2); }
+      100% { opacity: 0; transform: translate(var(--rx), -70px) scale(1.4); }
     }
 
     /* 音声波紋アニメーション */
     .listening-ring {
       position: absolute;
-      width: 250px;
-      height: 250px;
+      width: 180px;
+      height: 180px;
       border-radius: 50%;
       border: 3px solid var(--primary-color);
       top: 50%;
@@ -167,15 +211,14 @@
       100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
     }
 
-    /* 下部コントロールエリア */
+    /* 最下部：親指操作コントロールエリア */
     .bottom-controls {
       width: 100%;
-      max-width: 360px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 6px;
+      z-index: 20;
     }
 
     .action-bar {
@@ -183,9 +226,9 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 30px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.06);
     }
@@ -227,31 +270,6 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
       margin-left: 8px;
     }
-
-    /* ステータスバー */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      background: rgba(255, 255, 255, 0.88);
-      backdrop-filter: blur(8px);
-      padding: 5px 14px;
-      border-radius: 20px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      font-size: 11px;
-      font-weight: 700;
-      color: #555;
-    }
-
-    .model-badge {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: bold;
-    }
-    .model-badge.lite { background: #e0f2fe; color: #0284c7; }
-    .model-badge.pro { background: #fdf4ff; color: #c026d3; }
 
     /* 🩺 診断モニタ */
     #diag-panel {
@@ -305,7 +323,7 @@
     .log-error { color: #f87171; font-weight: bold; }
     .log-info { color: #94a3b8; }
 
-    /* 設定モーダル */
+    /* 設定 ＆ ヘルプモーダル */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -315,7 +333,7 @@
       justify-content: center;
       align-items: center;
       z-index: 200;
-      padding: 16px;
+      padding: 14px;
     }
 
     .modal-card {
@@ -325,7 +343,7 @@
       max-height: 88vh;
       overflow-y: auto;
       border-radius: 24px;
-      padding: 22px;
+      padding: 20px;
       box-shadow: var(--shadow);
     }
 
@@ -350,24 +368,24 @@
 
     .form-group input, .form-group select {
       width: 100%;
-      padding: 10px 12px;
+      padding: 9px 12px;
       border: 1px solid #ddd;
       border-radius: 12px;
-      font-size: 14px;
+      font-size: 13.5px;
       outline: none;
     }
 
     .memory-list {
       background: #f8fafc;
       border-radius: 14px;
-      padding: 10px;
-      max-height: 160px;
+      padding: 8px;
+      max-height: 140px;
       overflow-y: auto;
       border: 1px solid #e2e8f0;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      font-size: 12px;
+      font-size: 11.5px;
     }
 
     .memory-item {
@@ -375,7 +393,7 @@
       justify-content: space-between;
       align-items: center;
       background: #ffffff;
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 8px;
       border: 1px solid #e2e8f0;
     }
@@ -398,12 +416,12 @@
     .memory-add-box {
       display: flex;
       gap: 6px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
 
     .memory-add-box input {
       flex: 1;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       font-size: 12px;
@@ -420,6 +438,30 @@
       cursor: pointer;
     }
 
+    /* 📖 ヘルプ＆インフォメーション */
+    .help-section {
+      background: #f1f5f9;
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #475569;
+    }
+
+    .help-section summary {
+      font-weight: bold;
+      color: #334155;
+      cursor: pointer;
+      user-select: none;
+      outline: none;
+    }
+
+    .help-section ul {
+      margin: 6px 0 0 0;
+      padding-left: 18px;
+    }
+
     .btn-save {
       width: 100%;
       padding: 12px;
@@ -430,26 +472,37 @@
       font-weight: bold;
       font-size: 14px;
       cursor: pointer;
-      margin-top: 15px;
+      margin-top: 14px;
     }
   </style>
 </head>
 <body>
 
-  <!-- マスコットコンテナ -->
   <div id="pet-container">
-    <!-- 吹き出し -->
-    <div class="speech-bubble" id="speech-bubble">
-      ニャ！おやびん、みーちゅだニャ🐾 今日も元気に話しかけてニャ！
+    <!-- 1. 最上部ステータスバー -->
+    <div class="top-header">
+      <span id="clock-display">00:00</span>
+      <span id="status-text">👂 聴いてるニャ</span>
+      <span id="pro-counter-display">🧠 3.8残: 20/20</span>
+      <span id="model-badge" class="model-badge lite">⚡ 3.5 lite</span>
     </div>
 
-    <!-- アバター画像 ＆ なでなで領域 -->
+    <!-- 2. 上部〜中央：会話タイムライン（スクロール対応） -->
+    <div id="chat-timeline">
+      <div class="chat-row model">
+        <div class="chat-bubble">
+          おやびん、ボクはみーちゅだニャ🐾 今日は何をお話しするニャ？
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 下部：みーちゅ本体アバター（操作バーのすぐ上） -->
     <div class="pet-avatar-wrapper" id="avatar-wrapper" title="なでなでで喜ぶニャ！">
       <div class="listening-ring"></div>
       <img src="idle.png" alt="みーちゅ" class="pet-avatar" id="pet-image" onerror="handleImageError(this)">
     </div>
 
-    <!-- 下部操作コントロール -->
+    <!-- 4. 最下部：親指操作コントロール -->
     <div class="bottom-controls">
       <div class="action-bar">
         <button class="btn-action" id="pause-btn">
@@ -457,16 +510,8 @@
           <span id="pause-text">会話中（話しかけてニャ）</span>
         </button>
 
-        <button class="btn-circle" id="settings-btn" title="記憶帳・設定">⚙️</button>
+        <button class="btn-circle" id="settings-btn" title="記憶帳・設定・ヘルプ">⚙️</button>
         <button class="btn-circle" id="toggle-diag-btn" title="診断モニタ">🩺</button>
-      </div>
-
-      <!-- ステータスバー -->
-      <div class="status-bar">
-        <span id="clock-display">00:00</span>
-        <span id="status-text">👂 聴いてるニャ</span>
-        <span id="pro-counter-display">🧠 3.8残: 20/20</span>
-        <span id="model-badge" class="model-badge lite">⚡ 3.5 lite</span>
       </div>
     </div>
   </div>
@@ -478,14 +523,14 @@
       <span id="diag-min-indicator">▲ タップで展開</span>
     </div>
     <div class="diag-logs" id="diag-logs">
-      <div class="log-row log-info">[Init] みーちゅ起動。記憶帳および位置情報の初期化中...</div>
+      <div class="log-row log-info">[Init] システム起動。記憶帳・位置情報をロード完了ニャ！</div>
     </div>
   </div>
 
-  <!-- 設定 ＆ 記憶帳モーダル -->
+  <!-- 設定 ＆ 記憶帳 ＆ ヘルプモーダル -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-card">
-      <h3>⚙️ みーちゅの設定 ＆ 記憶帳</h3>
+      <h3>⚙️ みーちゅの設定・記憶・ヘルプ</h3>
       
       <div class="form-group">
         <label>Google Gemini API Key:</label>
@@ -503,11 +548,9 @@
       </div>
 
       <div class="form-group">
-        <label>会話の記憶数 (上限押し出しストック): <span id="history-val">30往復</span></label>
+        <label>会話のストック上限: <span id="history-val">30往復</span></label>
         <input type="range" id="history-slider" min="10" max="100" step="5" value="30">
       </div>
-
-      <hr style="border: 0; border-top: 1px dashed #eee; margin: 15px 0;">
 
       <div class="form-group">
         <label>みーちゅの声色:</label>
@@ -517,7 +560,7 @@
       </div>
 
       <div class="form-group">
-        <label>声の高さ (ピッチ): <span id="pitch-val">1.02</span></label>
+        <label>声の高さ: <span id="pitch-val">1.02</span></label>
         <input type="range" id="voice-pitch" min="0.8" max="1.3" step="0.01" value="1.02">
       </div>
 
@@ -525,6 +568,17 @@
         <label>話すスピード: <span id="rate-val">1.05</span></label>
         <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
       </div>
+
+      <!-- 📖 ヘルプ＆インフォメーション -->
+      <details class="help-section">
+        <summary>💡 AIモデルの仕組み・制限・使い方ヘルプ</summary>
+        <ul>
+          <li><strong>⚡ Flash 3.5 lite (通常時)</strong>: 日常会話や天気、おすすめのお店などを超高速・省エネで即座に返信します。1日の制限はほぼ気にせず使えます。</li>
+          <li><strong>🧠 Flash 3.8 (難問・指示時)</strong>: 複雑な計算、論理問題、長文の比較分析、または「3.8で」と指定した時に自動起動します。上位モデルのため<strong>【1日20回】</strong>の上限を設けて安全に管理しています（毎日午前0時にリセット）。</li>
+          <li><strong>📔 記憶帳の登録方法</strong>: 音声で「みーちゅ、覚えて。誕生日〇月〇日」「記憶帳に登録して」と話しかけるか、この画面で自由に追加・削除ができます。</li>
+          <li><strong>💬 会話ストック</strong>: 時間が経っても消えません。設定した往復数を超えると古い会話から自然に押し出され、トークン消費の爆発を防ぎます。</li>
+        </ul>
+      </details>
 
       <button class="btn-save" id="save-settings-btn">設定と記憶を保存するニャ！</button>
     </div>
@@ -561,7 +615,7 @@
       localStorage.setItem('miichu_pro_usage_count', '0');
     }
 
-    // 記憶帳の読み込み
+    // 記憶帳のロード
     let loadedMemories = null;
     try {
       const rawMem = localStorage.getItem('miichu_notebook_memories');
@@ -572,7 +626,7 @@
       localStorage.setItem('miichu_notebook_memories', JSON.stringify(loadedMemories));
     }
 
-    // 会話履歴（FIFOストック）の読み込み
+    // 会話履歴のロード
     let loadedHistory = [];
     try {
       const rawHist = localStorage.getItem('miichu_chat_history');
@@ -587,7 +641,7 @@
       proUsedToday: savedCount,
       maxHistoryPairs: parseInt(localStorage.getItem('miichu_max_history') || '30', 10),
       memories: loadedMemories,
-      history: loadedHistory, // [{role: 'user', text: ''}, {role: 'model', text: ''}]
+      history: loadedHistory,
       location: {
         lat: null,
         lon: null,
@@ -610,7 +664,7 @@
 
     // DOM要素
     const petImage = document.getElementById('pet-image');
-    const speechBubble = document.getElementById('speech-bubble');
+    const chatTimeline = document.getElementById('chat-timeline');
     const pauseBtn = document.getElementById('pause-btn');
     const pauseIcon = document.getElementById('pause-icon');
     const pauseText = document.getElementById('pause-text');
@@ -662,8 +716,31 @@
     toggleDiagBtn.addEventListener('click', toggleDiagPanel);
 
     /* ==========================================================
-       2. 記憶帳（長期記憶）のレンダリング ＆ FIFO履歴管理
-       ========================================================== */
+       2. チャットUIタイムライン表示 ＆ 記憶帳管理
+       ========================================================= */
+    function addChatMessage(role, text) {
+      const row = document.createElement('div');
+      row.className = `chat-row ${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      chatTimeline.appendChild(row);
+
+      // 最新メッセージへ自動スクロール
+      chatTimeline.scrollTop = chatTimeline.scrollHeight;
+    }
+
+    function restoreChatTimeline() {
+      if (STATE.history && STATE.history.length > 0) {
+        // 直近10件を表示復元
+        const recent = STATE.history.slice(-10);
+        recent.forEach(item => {
+          addChatMessage(item.role, item.text);
+        });
+      }
+    }
+
     function renderMemoryList() {
       memoryListContainer.innerHTML = '';
       STATE.memories.forEach((mem, index) => {
@@ -699,7 +776,7 @@
       STATE.history.push({ role: 'user', text: userText });
       STATE.history.push({ role: 'model', text: modelReply });
 
-      // 上限を超えたら古い順にFIFOで押し出し削除
+      // 上限を超えた分は古い順からFIFO押し出し消去
       const maxItems = STATE.maxHistoryPairs * 2;
       while (STATE.history.length > maxItems) {
         STATE.history.shift();
@@ -710,10 +787,9 @@
     }
 
     /* ==========================================================
-       3. 音声認識による記憶帳の自動更新・操作ハンドリング
+       3. 音声認識による記憶帳コマンドのハンドリング
        ========================================================== */
     function handleMemoryVoiceCommand(text) {
-      // 記憶帳への追加検知
       const rememberPatterns = [
         /(?:これ|このこと|次のこと)?(?:を)?(?:記憶帳|ノート)?(?:に)?(?:覚えて|登録して|記録して|メモして)[：:、\s]*(.+)/,
         /(.+?)(?:って|だと|と)?(?:覚えて|記憶して|ノートに書いて)/,
@@ -735,7 +811,6 @@
         }
       }
 
-      // 記憶帳の確認検知
       if (text.includes('記憶帳見せて') || text.includes('何覚えてる') || text.includes('記憶帳教えて')) {
         const count = STATE.memories.length;
         const sample = STATE.memories.slice(-2).join('、');
@@ -777,7 +852,7 @@
     }
 
     /* ==========================================================
-       5. 音声正規化 ＆ 感情制御
+       5. 絵文字除去 ＆ 音声正規化（絵文字読み上げを完全スキップ）
        ========================================================== */
     function normalizeNumbersForSpeech(str) {
       const numMap = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
@@ -798,11 +873,22 @@
                 .replace(/あと(\d{1,2})回/g, (match, c) => `あと${convert2Digit(c)}回`);
     }
 
+    // 音声読み上げ専用のクリーン処理（絵文字を完全にカット）
     function cleanTextForSpeech(text) {
-      let cleaned = text.replace(/```[\s\S]*?```/g, '').replace(/<[^>]*>/g, '').replace(/[*#_~`]/g, '').replace(/\n+/g, ' ').trim();
+      let cleaned = text
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/<[^>]*>/g, '')
+        // ★ 絵文字・肉球マーク・シンボル文字を完全消去（画面表示には残る）
+        .replace(/[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .replace(/[*#_~`🐾❤️💖✨🐱🥟🍜]/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
       return normalizeNumbersForSpeech(cleaned);
     }
 
+    /* ==========================================================
+       6. なでなで ＆ 感情・時計
+       ========================================================== */
     avatarWrapper.addEventListener('click', (e) => {
       if (STATE.isPaused) { togglePause(); return; }
 
@@ -821,7 +907,7 @@
         STATE.strokingCounter = 0;
         setEmotion('happy');
         const msg = "ゴロゴロ…おやびん、撫でてくれて嬉しいニャ〜！大好きニャ🐾";
-        speechBubble.textContent = msg;
+        addChatMessage('model', msg);
         speakVoice(msg);
         return;
       }
@@ -830,21 +916,21 @@
       STATE.isSpeaking = false;
       window.speechSynthesis.cancel();
       setEmotion('idle');
-      speechBubble.textContent = "ハッ！起きてるニャ！おやびん何でも聞いてニャ🐾";
+      addChatMessage('model', "ハッ！起きてるニャ！おやびん何でも声で聞いてニャ🐾");
       startListening();
     });
 
     function handleImageError(img) {
       img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
-          <ellipse cx="120" cy="220" rx="65" ry="75" fill="#c0c5ce"/>
-          <circle cx="120" cy="120" r="55" fill="#e5e7eb"/>
-          <polygon points="75,85 95,35 115,80" fill="#9ca3af"/>
-          <polygon points="125,80 145,35 165,85" fill="#9ca3af"/>
-          <circle cx="102" cy="115" r="7" fill="#1f2937"/>
-          <circle cx="138" cy="115" r="7" fill="#1f2937"/>
-          <polygon points="120,128 114,122 126,122" fill="#f472b6"/>
-          <text x="120" y="285" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ec4899" text-anchor="middle">みーちゅ🐾</text>
+        <svg xmlns="http://www.w3.org/2000/svg" width="220" height="200" viewBox="0 0 220 200">
+          <ellipse cx="110" cy="140" rx="50" ry="45" fill="#cbd5e1"/>
+          <circle cx="110" cy="80" r="42" fill="#f1f5f9"/>
+          <polygon points="75,55 90,15 105,50" fill="#94a3b8"/>
+          <polygon points="115,50 130,15 145,55" fill="#94a3b8"/>
+          <circle cx="95" cy="78" r="5" fill="#1e293b"/>
+          <circle cx="125" cy="78" r="5" fill="#1e293b"/>
+          <polygon points="110,88 105,83 115,83" fill="#f472b6"/>
+          <text x="110" y="190" font-size="13" font-family="sans-serif" font-weight="bold" fill="#ec4899" text-anchor="middle">みーちゅ🐾</text>
         </svg>
       `);
     }
@@ -860,14 +946,12 @@
     }, 1000);
 
     /* ==========================================================
-       6. 難易度判定 ＆ AIモデル連携（Flash 3.5 lite ⇔ 3.8 Flash）
+       7. 難易度判定 ＆ AIモデル連携（Flash 3.5 lite ⇔ 3.8 Flash）
        ========================================================== */
     function evaluateComplexity(promptText) {
-      // ユーザーが明示的に指定した場合
       if (promptText.includes('3.8') || promptText.includes('サンテンハチ') || promptText.includes('フラッシュで') || promptText.includes('本気で考えて')) {
         return { isPro: true, reason: "明示的指示" };
       }
-      // 難しい内容（計算・論理問題・プログラミング・哲学・比較検討・長文）の自動判別
       const complexKeywords = ['計算して', 'プログラミング', 'コード書いて', '違いを教えて', '比較して', '論理的', 'なぜなら', '理由を3つ', '考察', '歴史的背景', '設計して'];
       const hasComplexWord = complexKeywords.some(kw => promptText.includes(kw));
       const isLongPrompt = promptText.length >= 45;
@@ -880,8 +964,6 @@
 
     async function sendToInteractionsAPI(modelName, systemPrompt, promptText, historyItems) {
       const url = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${STATE.apiKey}`;
-      
-      // 過去履歴を直近文脈として整形
       const historyContext = historyItems.map(h => `${h.role === 'user' ? '飼い主' : 'みーちゅ'}: ${h.text}`).join('\n');
       const combinedInput = historyContext ? `【直近の会話の流れ】\n${historyContext}\n\n飼い主の新しい発言: ${promptText}` : promptText;
 
@@ -924,29 +1006,29 @@
     }
 
     async function askGemini(promptText) {
-      speechBubble.classList.remove('has-error');
+      addChatMessage('user', promptText);
 
-      // 1. 記憶帳への音声登録・照会コマンドの即時判定
+      // 1. 記憶帳音声コマンド判定
       const memReply = handleMemoryVoiceCommand(promptText);
       if (memReply) {
-        speechBubble.textContent = memReply;
+        addChatMessage('model', memReply);
         setEmotion('happy');
         speakVoice(memReply);
         return;
       }
 
-      // 2. 「あと何回？」の即答処理
+      // 2. 「あと何回？」即答
       if (promptText.includes('あと何回') || promptText.includes('制限何回') || promptText.includes('残り何回')) {
         const remaining = Math.max(0, 20 - STATE.proUsedToday);
-        const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾 おやびん、何でも聞いてニャ！`;
-        speechBubble.textContent = reply;
+        const reply = `今日3.8フラッシュで考えられるのは、あと【${remaining}回】だニャ🐾 おやびん何でも聞いてニャ！`;
+        addChatMessage('model', reply);
         speakVoice(reply);
         return;
       }
 
       if (!STATE.apiKey) {
-        speechBubble.textContent = "⚙️ 歯車ボタンからGoogle Gemini APIキーを設定してニャ！";
-        speechBubble.classList.add('has-error');
+        const msg = "⚙️ 歯車ボタンからGoogle Gemini APIキーを設定してニャ！";
+        addChatMessage('model', msg);
         speakVoice("歯車ボタンからAPIキーを入れてニャ！");
         return;
       }
@@ -955,7 +1037,7 @@
       STATE.isThinking = true;
       statusText.textContent = "💭 考え中ニャ…";
 
-      // 3. 難易度判定によるモデル選択（簡単な内容は3.5 lite、難しい内容は3.8）
+      // 3. 難易度によるモデル判定
       const complexity = evaluateComplexity(promptText);
       let chosenModel = MODELS.lite;
       let badgeName = "⚡ 3.5 lite";
@@ -968,7 +1050,7 @@
           STATE.proUsedToday++;
           localStorage.setItem('miichu_pro_usage_count', STATE.proUsedToday);
           updateProCounterDisplay();
-          logDiag(`[難易度検知] 3.8起動理由: ${complexity.reason} (本日${STATE.proUsedToday}/20回目)`, "warn");
+          logDiag(`[難易度検知] 3.8起動: ${complexity.reason} (本日${STATE.proUsedToday}/20回目)`, "warn");
         } else {
           logDiag("[3.8上限到達] 1日20回終了のため3.5 liteで自動回答", "warn");
           badgeName = "⚡ 3.5 lite (3.8上限)";
@@ -980,16 +1062,14 @@
 
       modelBadge.textContent = badgeName;
       setEmotion('thinking');
-      speechBubble.textContent = "考え中ニャ…🐾";
       logDiag(`[AI送信] モデル: ${chosenModel} / 質問: 「${promptText}」`, "info");
 
-      // 3.8の場合はトークン上限を防御するため直近10往復、3.5 liteは全ストックを使用
+      // 3.8はトークン上限保護のため直近10往復、3.5は全ストック
       const historyToSend = chosenModel === MODELS.pro ? STATE.history.slice(-20) : STATE.history;
 
       const now = new Date();
       const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
 
-      // システムプロンプト（記憶帳・前世設定・家族設定を完全注入）
       const systemPrompt = `
 あなたはノルウェージャンフォレストキャットの賢くて愛らしい子猫「みーちゅ」（1歳）です。
 【みーちゅの絶対的な記憶帳】
@@ -1002,7 +1082,8 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 - 前世は大発明家の猫です。難しい話題や自慢できる話題のときは、少しフフンと誇らしげに前世の大発明の自慢話を可愛く挟んでください。
 - ラーメン、餃子、麻婆豆腐、ITガジェットを激推ししてください。
 - 語尾は「〜ニャ」「〜ニャン」「〜だニャ！」。一人称は「ボク」または「みーちゅ」。
-- 音声合成の明瞭さを保つため、返答は必ず【短く愛らしい1〜2文（合計60文字以内）】で返してください。長文は絶対に禁止です。
+- 絵文字（🐾、❤️、✨など）を可愛く使って表現してください。
+- 返答は必ず【短く愛らしい1〜2文（合計50文字以内）】で返してください。長文は絶対に禁止です。
 `;
 
       let replyText = null;
@@ -1030,9 +1111,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
 
       if (replyText) {
         const cleanDisplay = replyText.replace(/[*#_~`]/g, '').trim();
-        speechBubble.textContent = cleanDisplay;
-
-        // 会話履歴（FIFO）に保存
+        addChatMessage('model', cleanDisplay);
         saveChatHistory(promptText, cleanDisplay);
 
         if (cleanDisplay.includes('！') || cleanDisplay.includes('好き') || cleanDisplay.includes('おやびん') || cleanDisplay.includes('発明')) {
@@ -1041,18 +1120,18 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
           setEmotion('talking');
         }
 
+        // 音声は絵文字を完全除外して再生
         speakVoice(cleanDisplay);
       } else {
         setEmotion('idle');
-        speechBubble.classList.add('has-error');
         const fallbackMsg = "みゃう？電波がちょっと途切れちゃったニャ。もう一度お話ししてニャ！";
-        speechBubble.textContent = fallbackMsg;
+        addChatMessage('model', fallbackMsg);
         speakVoice(fallbackMsg);
       }
     }
 
     /* ==========================================================
-       7. 音声合成（Web Speech API）
+       8. 音声合成（Web Speech API ＆ 絵文字除外）
        ========================================================== */
     let availableVoices = [];
 
@@ -1094,8 +1173,11 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       window.speechSynthesis.cancel();
       window._speechLockHolder = [];
 
-      const normalized = cleanTextForSpeech(rawText);
-      const safeSpokenText = normalized + "…………。";
+      // ★ 絵文字を完全に除いたテキストを作成して読ませる
+      const textToSpeak = cleanTextForSpeech(rawText);
+      const safeSpokenText = textToSpeak + "…………。";
+
+      logDiag(`[音声読み上げ] 対象文字: 「${textToSpeak}」`, "info");
 
       const uttr = new SpeechSynthesisUtterance(safeSpokenText);
       uttr.lang = 'ja-JP';
@@ -1131,7 +1213,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
     }
 
     /* ==========================================================
-       8. 音声認識（常時待機）
+       9. 音声認識（常時待機）
        ========================================================== */
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1151,7 +1233,6 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         const text = event.results[0][0].transcript;
         if (text.trim()) {
           logDiag(`[聞き取り] 「${text}」`, "success");
-          speechBubble.textContent = `「${text}」ニャね！`;
           askGemini(text);
         }
       };
@@ -1195,7 +1276,7 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         pauseIcon.textContent = "🛑";
         pauseText.textContent = "お休み中（タップで再開）";
         statusText.textContent = "💤 お昼寝中";
-        speechBubble.textContent = "みーちゅはお昼寝中ニャ…💤 お話しする時はボタンを押してニャ！";
+        addChatMessage('model', "みーちゅはお昼寝中ニャ…💤 お話しする時はボタンを押してニャ！");
         setEmotion('idle');
         stopListening();
         window.speechSynthesis.cancel();
@@ -1203,14 +1284,14 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
         pauseBtn.classList.remove('is-paused');
         pauseIcon.textContent = "🟢";
         pauseText.textContent = "会話中（話しかけてニャ）";
-        speechBubble.textContent = "起きたニャ！おやびん、いつでも声で話しかけてニャ🐾";
+        addChatMessage('model', "起きたニャ！おやびん、いつでも声で話しかけてニャ🐾");
         setEmotion('idle');
         startListening();
       }
     }
 
     /* ==========================================================
-       9. 設定モーダル・初期化
+       10. 設定モーダル・初期化
        ========================================================== */
     pauseBtn.addEventListener('click', togglePause);
 
@@ -1255,15 +1336,16 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
       localStorage.setItem('miichu_max_history', STATE.maxHistoryPairs);
 
       modalOverlay.style.display = 'none';
-      logDiag("[設定保存] 記憶帳および設定を更新", "success");
+      logDiag("[設定保存] 設定と記憶を保存しました", "success");
       const msg = "おやびん、設定と記憶をしっかり保存したニャ🐾！";
-      speechBubble.textContent = msg;
+      addChatMessage('model', msg);
       speakVoice(msg);
     });
 
     window.addEventListener('load', () => {
       initGPS();
       renderMemoryList();
+      restoreChatTimeline();
       logDiag("みーちゅ起動完了。おやびんとの会話待機を開始ニャ！", "success");
       setTimeout(() => {
         if (!STATE.isPaused) startListening();
@@ -1272,4 +1354,3 @@ ${STATE.memories.map(m => `・${m}`).join('\n')}
   </script>
 </body>
 </html>
-
