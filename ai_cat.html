@@ -1,0 +1,1176 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIペット みーちゅ🐾 (完全安定版)</title>
+  <style>
+    :root {
+      --primary-color: #ff85a2;
+      --secondary-color: #7b68ee;
+      --bubble-bg: rgba(255, 255, 255, 0.96);
+      --text-color: #333333;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+      position: relative;
+    }
+
+    /* マスコットコンテナ（画面内ドラッグ移動可能） */
+    #pet-container {
+      position: absolute;
+      bottom: 24px;
+      right: 40px;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.15));
+      cursor: grab;
+      touch-action: none;
+      z-index: 50;
+    }
+
+    #pet-container.is-dragging {
+      cursor: grabbing;
+      opacity: 0.92;
+    }
+
+    .no-drag {
+      cursor: auto;
+    }
+
+    /* 吹き出し（セリフ） */
+    .speech-bubble {
+      position: relative;
+      background: var(--bubble-bg);
+      border-radius: 24px;
+      padding: 14px 18px;
+      color: var(--text-color);
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 330px;
+      min-height: 48px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      border: 2px solid #ffd1dc;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      word-break: break-word;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      z-index: 10;
+      cursor: default;
+    }
+
+    .speech-bubble.has-error {
+      border-color: #ef4444;
+      background: #fff5f5;
+      color: #b91c1c;
+    }
+
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 10px 10px 0;
+      border-style: solid;
+      border-color: #ffd1dc transparent transparent;
+      display: block;
+      width: 0;
+    }
+    .speech-bubble.has-error::after {
+      border-color: #ef4444 transparent transparent;
+    }
+
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -7px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 9px 9px 0;
+      border-style: solid;
+      border-color: var(--bubble-bg) transparent transparent;
+      display: block;
+      width: 0;
+      z-index: 1;
+    }
+
+    /* アバター ＆ 呼吸アニメーション */
+    .pet-avatar-wrapper {
+      position: relative;
+      width: 250px;
+      height: 310px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      cursor: pointer;
+      margin-bottom: 6px;
+      animation: cat-breathe 3.5s ease-in-out infinite;
+    }
+
+    @keyframes cat-breathe {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-4px) scale(1.015, 0.985); }
+    }
+
+    .pet-avatar {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .pet-avatar-wrapper:hover .pet-avatar {
+      transform: scale(1.04);
+    }
+
+    /* なでなでハート演出 */
+    .heart-fx {
+      position: absolute;
+      color: #ff4d6d;
+      font-size: 24px;
+      pointer-events: none;
+      animation: float-heart 1s ease-out forwards;
+      z-index: 25;
+    }
+
+    @keyframes float-heart {
+      0% { opacity: 1; transform: translate(0, 0) scale(0.6); }
+      50% { opacity: 0.9; transform: translate(var(--rx), -35px) scale(1.2); }
+      100% { opacity: 0; transform: translate(var(--rx), -70px) scale(1.4); }
+    }
+
+    /* 音声波紋アニメーション */
+    .listening-ring {
+      position: absolute;
+      width: 230px;
+      height: 230px;
+      border-radius: 50%;
+      border: 3px solid var(--primary-color);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .is-listening .listening-ring {
+      animation: pulse 1.4s infinite ease-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.85; }
+      100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+    }
+
+    /* 操作バー */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      z-index: 15;
+      margin-bottom: 8px;
+    }
+
+    .btn-action {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .btn-action.is-paused {
+      background: #fef2f2;
+      color: #ef4444;
+      border: 1.5px solid #fecaca;
+    }
+
+    .btn-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover, .btn-circle:hover {
+      transform: translateY(-2px);
+    }
+
+    /* 最下部ステータスバー */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      padding: 5px 14px;
+      border-radius: 20px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      z-index: 15;
+    }
+
+    .model-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      transition: all 0.3s;
+    }
+    .model-badge.lite {
+      background: #e0f2fe;
+      color: #0284c7;
+      border: 1px solid #bae6fd;
+    }
+    .model-badge.pro {
+      background: #fdf4ff;
+      color: #c026d3;
+      border: 1px solid #f5d0fe;
+    }
+    .model-badge.bypass {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    /* 🩺 リアルタイム診断コンソール */
+    #diag-panel {
+      position: fixed;
+      left: 15px;
+      bottom: 15px;
+      width: 440px;
+      max-height: 220px;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(10px);
+      color: #e2e8f0;
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 90;
+      border: 1px solid #334155;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    #diag-panel.minimized {
+      transform: translateY(calc(100% - 32px));
+      opacity: 0.85;
+    }
+
+    .diag-header {
+      background: #1e293b;
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      color: #38bdf8;
+      border-bottom: 1px solid #334155;
+    }
+
+    .diag-logs {
+      padding: 8px 12px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-row { line-height: 1.4; word-break: break-all; }
+    .log-success { color: #4ade80; }
+    .log-warn { color: #facc15; }
+    .log-error { color: #f87171; font-weight: bold; }
+    .log-info { color: #94a3b8; }
+
+    /* 設定モーダル */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      cursor: default;
+    }
+
+    .modal-card {
+      background: white;
+      width: 90%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-card h3 {
+      margin-top: 0;
+      color: #333;
+      font-size: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 11px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- マスコットコンテナ（ドラッグ可能） -->
+  <div id="pet-container">
+    <!-- 吹き出し -->
+    <div class="speech-bubble no-drag" id="speech-bubble">
+      ニャ！ボクはみーちゅだニャ🐾 「最新ニュース教えて」「いま何時？」って声で聞いてニャ！
+    </div>
+
+    <!-- アバター画像 ＆ なでなで領域 -->
+    <div class="pet-avatar-wrapper" id="avatar-wrapper" title="ドラッグで移動、なでなでで喜ぶニャ！">
+      <div class="listening-ring"></div>
+      <img src="idle.png" alt="みーちゅ" class="pet-avatar" id="pet-image" onerror="handleImageError(this)">
+    </div>
+
+    <!-- 操作バー -->
+    <div class="action-bar no-drag">
+      <button class="btn-action" id="pause-btn">
+        <span id="pause-icon">🟢</span>
+        <span id="pause-text">会話中（話しかけてニャ）</span>
+      </button>
+
+      <button class="btn-circle" id="settings-btn" title="声の変更・設定">⚙️</button>
+      <button class="btn-circle" id="toggle-diag-btn" title="診断モニタの開閉">🩺</button>
+    </div>
+
+    <!-- 最下部ステータスバー -->
+    <div class="status-bar no-drag">
+      <span id="clock-display">00:00</span>
+      <span>⏱️ <span id="timer-display">0.0s</span></span>
+      <span id="status-text">👂 聴いてるニャ</span>
+      <span id="model-badge" class="model-badge lite">⚡ Flash 3.5 lite</span>
+    </div>
+  </div>
+
+  <!-- 🩺 リアルタイム診断コンソール（画面左下） -->
+  <div id="diag-panel">
+    <div class="diag-header" id="diag-header">
+      <span>🩺 みーちゅ システム診断モニタ</span>
+      <span id="diag-min-indicator">▼</span>
+    </div>
+    <div class="diag-logs" id="diag-logs">
+      <div class="log-row log-info">[Init] システム起動完了。429自動バイパス＆音声完全ロック有効</div>
+    </div>
+  </div>
+
+  <!-- 設定モーダル -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-card">
+      <h3>⚙️ みーちゅの設定＆声選び</h3>
+      
+      <div class="form-group">
+        <label>Google Gemini API Key:</label>
+        <input type="password" id="api-key-input" placeholder="AIzaSy...">
+      </div>
+
+      <hr style="border: 0; border-top: 1px dashed #eee; margin: 15px 0;">
+
+      <div class="form-group">
+        <label>みーちゅの声色 (パソコン内の音声):</label>
+        <select id="voice-select">
+          <option value="">読み込み中ニャ…</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>声の高さ (ピッチ - 音飛び防止のため1.02固定推奨): <span id="pitch-val">1.02</span></label>
+        <input type="range" id="voice-pitch" min="0.8" max="1.3" step="0.01" value="1.02">
+      </div>
+
+      <div class="form-group">
+        <label>話すスピード: <span id="rate-val">1.05</span></label>
+        <input type="range" id="voice-rate" min="0.8" max="1.3" step="0.05" value="1.05">
+      </div>
+
+      <button class="btn-save" id="save-settings-btn">設定を保存するニャ！</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================
+       1. 状態管理 ＆ 429ロック状態の永続保持
+       ========================================================== */
+    const STATE = {
+      apiKey: localStorage.getItem('miichu_api_key') || '',
+      selectedVoiceURI: localStorage.getItem('miichu_voice_uri') || '',
+      pitch: parseFloat(localStorage.getItem('miichu_pitch') || '1.02'),
+      rate: parseFloat(localStorage.getItem('miichu_rate') || '1.05'),
+      // ★ Googleの429（20回上限）ロック解除時刻を記憶（ミリ秒）
+      proLockUntil: parseInt(localStorage.getItem('miichu_pro_lock_until') || '0', 10),
+      isPaused: false,
+      isListening: false,
+      isThinking: false,
+      isSpeaking: false,
+      chatHistory: [],
+      strokingCounter: 0
+    };
+
+    // 音声GC破棄バグ防止ロック
+    window._speechLockHolder = [];
+
+    const MODELS = {
+      lite: 'gemini-3.5-flash-lite',
+      pro: 'gemini-3.8-flash'
+    };
+
+    // DOM要素
+    const petContainer = document.getElementById('pet-container');
+    const petImage = document.getElementById('pet-image');
+    const speechBubble = document.getElementById('speech-bubble');
+    const pauseBtn = document.getElementById('pause-btn');
+    const pauseIcon = document.getElementById('pause-icon');
+    const pauseText = document.getElementById('pause-text');
+    const settingsBtn = document.getElementById('settings-btn');
+    const toggleDiagBtn = document.getElementById('toggle-diag-btn');
+    const clockDisplay = document.getElementById('clock-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const statusText = document.getElementById('status-text');
+    const modelBadge = document.getElementById('model-badge');
+    const avatarWrapper = document.getElementById('avatar-wrapper');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const voiceSelect = document.getElementById('voice-select');
+    const voicePitch = document.getElementById('voice-pitch');
+    const voiceRate = document.getElementById('voice-rate');
+    const pitchVal = document.getElementById('pitch-val');
+    const rateVal = document.getElementById('rate-val');
+    const diagPanel = document.getElementById('diag-panel');
+    const diagHeader = document.getElementById('diag-header');
+    const diagLogs = document.getElementById('diag-logs');
+    const diagMinIndicator = document.getElementById('diag-min-indicator');
+
+    function logDiag(message, type = 'info') {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      const row = document.createElement('div');
+      row.className = `log-row log-${type}`;
+      row.textContent = `[${timeStr}] ${message}`;
+      diagLogs.appendChild(row);
+      diagLogs.scrollTop = diagLogs.scrollHeight;
+    }
+
+    function toggleDiagPanel() {
+      diagPanel.classList.toggle('minimized');
+      diagMinIndicator.textContent = diagPanel.classList.contains('minimized') ? '▲' : '▼';
+    }
+    diagHeader.addEventListener('click', toggleDiagPanel);
+    toggleDiagBtn.addEventListener('click', toggleDiagPanel);
+
+    /* ==========================================================
+       2. 音声正規化（数字の漢字読み化で音飛び根絶）
+       ========================================================== */
+    function normalizeNumbersForSpeech(str) {
+      const numMap = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+      function convert2Digit(n) {
+        n = parseInt(n, 10);
+        if (n === 0) return '〇';
+        if (n < 10) return numMap[n];
+        const tens = Math.floor(n / 10);
+        const ones = n % 10;
+        let res = tens > 1 ? numMap[tens] + '十' : '十';
+        if (ones > 0) res += numMap[ones];
+        return res;
+      }
+
+      return str.replace(/(\d{1,2})時(\d{1,2})分/g, (match, h, m) => {
+        return `${convert2Digit(h)}時${convert2Digit(m)}分`;
+      }).replace(/(\d{1,2})時/g, (match, h) => {
+        return `${convert2Digit(h)}時`;
+      }).replace(/(\d{1,2})分/g, (match, m) => {
+        return `${convert2Digit(m)}分`;
+      }).replace(/(\d{1,2})度/g, (match, d) => {
+        return `${convert2Digit(d)}度`;
+      });
+    }
+
+    function cleanTextForSpeech(text) {
+      let cleaned = text
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/[*#_~`]/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
+      return normalizeNumbersForSpeech(cleaned);
+    }
+
+    /* ==========================================================
+       3. ドラッグ＆ドロップ ＆ なでなで
+       ========================================================== */
+    let isDragging = false, dragStartX = 0, dragStartY = 0, initialX = 0, initialY = 0, hasMoved = false;
+
+    petContainer.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.no-drag')) return;
+      isDragging = true;
+      hasMoved = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      const rect = petContainer.getBoundingClientRect();
+      initialX = rect.left;
+      initialY = rect.top;
+      petContainer.style.bottom = 'auto';
+      petContainer.style.right = 'auto';
+      petContainer.style.left = `${initialX}px`;
+      petContainer.style.top = `${initialY}px`;
+      petContainer.classList.add('is-dragging');
+      petContainer.setPointerCapture(e.pointerId);
+    });
+
+    petContainer.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true;
+      let newX = initialX + dx;
+      let newY = initialY + dy;
+      newX = Math.max(10, Math.min(newX, window.innerWidth - petContainer.offsetWidth - 10));
+      newY = Math.max(10, Math.min(newY, window.innerHeight - petContainer.offsetHeight - 10));
+      petContainer.style.left = `${newX}px`;
+      petContainer.style.top = `${newY}px`;
+    });
+
+    petContainer.addEventListener('pointerup', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      petContainer.classList.remove('is-dragging');
+      try { petContainer.releasePointerCapture(e.pointerId); } catch(err) {}
+      if (hasMoved) {
+        localStorage.setItem('miichu_pos_x', petContainer.style.left);
+        localStorage.setItem('miichu_pos_y', petContainer.style.top);
+      }
+    });
+
+    avatarWrapper.addEventListener('click', (e) => {
+      if (hasMoved) return;
+      if (STATE.isPaused) { togglePause(); return; }
+
+      const rect = avatarWrapper.getBoundingClientRect();
+      const heart = document.createElement('div');
+      heart.className = 'heart-fx';
+      heart.textContent = ['❤️', '💖', '🐾', '✨'][Math.floor(Math.random() * 4)];
+      heart.style.left = `${e.clientX - rect.left}px`;
+      heart.style.top = `${e.clientY - rect.top}px`;
+      heart.style.setProperty('--rx', `${(Math.random() - 0.5) * 50}px`);
+      petContainer.appendChild(heart);
+      setTimeout(() => heart.remove(), 1000);
+
+      STATE.strokingCounter++;
+      if (STATE.strokingCounter >= 3) {
+        STATE.strokingCounter = 0;
+        setEmotion('happy');
+        const msg = "ゴロゴロ…撫でてくれて嬉しいニャ〜！大好きニャ🐾";
+        speechBubble.textContent = msg;
+        speakVoice(msg);
+        return;
+      }
+
+      STATE.isThinking = false;
+      STATE.isSpeaking = false;
+      window.speechSynthesis.cancel();
+      stopTimer();
+      setEmotion('idle');
+      speechBubble.textContent = "ハッ！起きてるニャ！何でも聞いてニャ🐾";
+      logDiag("猫ちゃんをタップして音声入力をリセット", "info");
+      startListening();
+    });
+
+    /* ==========================================================
+       4. 感情・画像 ＆ 時計
+       ========================================================== */
+    function handleImageError(img) {
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
+          <ellipse cx="120" cy="220" rx="65" ry="75" fill="#c0c5ce"/>
+          <circle cx="120" cy="120" r="55" fill="#e5e7eb"/>
+          <polygon points="75,85 95,35 115,80" fill="#9ca3af"/>
+          <polygon points="125,80 145,35 165,85" fill="#9ca3af"/>
+          <circle cx="102" cy="115" r="7" fill="#1f2937"/>
+          <circle cx="138" cy="115" r="7" fill="#1f2937"/>
+          <polygon points="120,128 114,122 126,122" fill="#f472b6"/>
+          <text x="120" y="285" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ec4899" text-anchor="middle">みーちゅ🐾</text>
+        </svg>
+      `);
+    }
+
+    function setEmotion(state) {
+      const images = { idle: 'idle.png', thinking: 'thinking.png', talking: 'talking.png', happy: 'happy.png' };
+      petImage.src = images[state] || images.idle;
+    }
+
+    setInterval(() => {
+      const now = new Date();
+      clockDisplay.textContent = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
+
+    let timerInterval = null, startTime = 0;
+    function startTimer() {
+      startTime = performance.now();
+      timerDisplay.textContent = '0.0s';
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timerDisplay.textContent = `${((performance.now() - startTime) / 1000).toFixed(1)}s`;
+      }, 100);
+    }
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerDisplay.textContent = `${((performance.now() - startTime) / 1000).toFixed(1)}s`;
+    }
+
+    /* ==========================================================
+       5. リアルタイム情報（天気 ＆ ニュース）
+       ========================================================== */
+    async function fetchWeather() {
+      try {
+        logDiag("[天気] Open-Meteoに問い合わせ中...", "info");
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current_weather=true&timezone=Asia%2FTokyo');
+        if (res.ok) {
+          const data = await res.json();
+          const temp = Math.round(data.current_weather.temperature);
+          const code = data.current_weather.weathercode;
+          let cond = '晴れ';
+          if (code > 2 && code < 50) cond = 'くもり';
+          if (code >= 50) cond = '雨';
+          logDiag(`[天気 取得成功] ${cond} / ${temp}度`, "success");
+          return `【現在の東京の天気】${cond}、気温は約${temp}度です。`;
+        }
+      } catch (e) {
+        logDiag(`[天気] 取得スキップ: ${e.message}`, "warn");
+      }
+      return "";
+    }
+
+    async function fetchNews() {
+      logDiag("[ニュース] 最新ニュースを取得中...", "info");
+      const targets = [
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja'),
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://news.yahoo.co.jp/rss/topics/top-picks.xml')
+      ];
+
+      for (const url of targets) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const text = await res.text();
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(text, 'text/xml');
+            const items = xml.querySelectorAll('item title');
+            if (items && items.length > 0) {
+              const headlines = Array.from(items).slice(0, 3).map(el => el.textContent.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim());
+              logDiag(`[ニュース取得成功] ${headlines.length}件取得: 「${headlines[0].slice(0, 15)}...」`, "success");
+              return `【最新ニュース速報】\n${headlines.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nこの中から1つを簡潔に紹介してください。`;
+            }
+          }
+        } catch (e) {}
+      }
+
+      return "【最新ニュース速報】最新テクノロジーの進化や季節の話題が注目されています。みーちゅらしく可愛く1文で紹介してください。";
+    }
+
+    /* ==========================================================
+       6. 難易度判定（★ 429ロック自動バイパスロジック内蔵）
+       ========================================================== */
+    function determineComplexity(prompt) {
+      const now = Date.now();
+      const isProLocked = now < STATE.proLockUntil;
+
+      const hardKeywords = [
+        'なぜ', 'どうして', '理由', '解説', '詳しく', '計算', 'コード', 
+        'プログラム', '比較', '歴史', '科学', '違い', '意味', '要約', '翻訳'
+      ];
+      const isHard = prompt.length > 25 || hardKeywords.some(kw => prompt.includes(kw));
+
+      // 難しい質問だが、Googleから429ロックを食らっている場合は自動で3.5 liteへ迂回！
+      if (isHard) {
+        if (isProLocked) {
+          const remMin = Math.ceil((STATE.proLockUntil - now) / 60000);
+          logDiag(`[自動バイパス発動] 3.8がGoogle制限中(残り約${remMin}分)のため、3.5 liteで賢く即答します`, "warn");
+          return {
+            model: MODELS.lite,
+            badgeClass: 'bypass',
+            displayName: '⚡ Flash 3.5 lite (自動引継ぎ)'
+          };
+        } else {
+          return {
+            model: MODELS.pro,
+            badgeClass: 'pro',
+            displayName: '🧠 Flash 3.8'
+          };
+        }
+      } else {
+        return {
+          model: MODELS.lite,
+          badgeClass: 'lite',
+          displayName: '⚡ Flash 3.5 lite'
+        };
+      }
+    }
+
+    /* ==========================================================
+       7. AI通信（★ Interactions API ＆ 429即時フォールバック回路）
+       ========================================================== */
+    async function sendToInteractionsAPI(modelName, systemPrompt, promptText) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${STATE.apiKey}`;
+      return await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelName,
+          system_instruction: systemPrompt,
+          input: promptText
+        })
+      });
+    }
+
+    function smartExtractText(data) {
+      if (!data) return null;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch(e) { return data; }
+      }
+      const candidates = [];
+      const ignoreKeys = ['id', 'status', 'created', 'total_tokens', 'model', 'role'];
+
+      function collect(val, keyName) {
+        if (!val) return;
+        if (typeof val === 'string') {
+          const str = val.trim();
+          if (str.length > 1 && !ignoreKeys.includes(keyName) && !str.startsWith('v1_') && str !== 'completed') {
+            candidates.push(str);
+          }
+        } else if (Array.isArray(val)) {
+          val.forEach(item => collect(item, keyName));
+        } else if (typeof val === 'object') {
+          for (const [k, v] of Object.entries(val)) collect(v, k);
+        }
+      }
+      collect(data, '');
+      const japaneseText = candidates.find(t => /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(t));
+      if (japaneseText) return japaneseText;
+      return candidates[0] || null;
+    }
+
+    async function askGemini(promptText) {
+      speechBubble.classList.remove('has-error');
+
+      if (!STATE.apiKey) {
+        speechBubble.textContent = "⚙️ 歯車ボタンからGoogle Gemini APIキーを設定してニャ！";
+        speechBubble.classList.add('has-error');
+        speakVoice("歯車ボタンからAPIキーを入れてニャ！");
+        return;
+      }
+
+      stopListening();
+      STATE.isThinking = true;
+      statusText.textContent = "💭 考え中ニャ…";
+
+      const route = determineComplexity(promptText);
+      modelBadge.className = `model-badge ${route.badgeClass}`;
+      modelBadge.textContent = route.displayName;
+
+      setEmotion('thinking');
+      startTimer();
+      speechBubble.textContent = "考え中ニャ…🐾";
+      logDiag(`[AI送信] モデル: ${route.model} / 質問: 「${promptText}」`, "info");
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+      const timeStr = `${now.getHours()}時${now.getMinutes()}分`;
+
+      let weatherText = "";
+      let newsText = "";
+
+      if (promptText.includes('天気') || promptText.includes('気温') || promptText.includes('雨') || promptText.includes('晴れ')) {
+        weatherText = await fetchWeather();
+      }
+      if (promptText.includes('ニュース') || promptText.includes('話題') || promptText.includes('出来事')) {
+        newsText = await fetchNews();
+      }
+
+      const systemPrompt = `
+あなたはノルウェージャンフォレストキャットの可愛い子猫「みーちゅ」（1歳）です。
+【現在日時】今日は ${dateStr}、現在の正確な時刻は【 ${timeStr} 】です。
+${weatherText ? weatherText + "\n天気を尋ねられたらこの気温と天気を元気に答えてください。" : ""}
+${newsText ? newsText + "\nニュースを尋ねられたらこの速報から1件をみーちゅらしく可愛く紹介してください。「分からない」と答えることは禁止です。" : ""}
+【話し方ルール（厳格遵守）】
+- 一人称は「ボク」または「みーちゅ」。
+- 語尾は「〜ニャ」「〜ニャン」「〜だニャ！」。
+- 音声合成の欠落を完全に防ぐため、返答は必ず【短く愛らしい1〜2文（合計50文字以内）】で答えてください。長い説明や箇条書きは禁止です。
+`;
+
+      let replyText = null;
+      let rawError = null;
+
+      try {
+        let response = await sendToInteractionsAPI(route.model, systemPrompt, promptText);
+
+        // ★ 核心的改修: Flash 3.8が1日20回制限（429）を返してきた瞬間に、3時間ロックを記憶し、即座に3.5 liteで回答生成！
+        if (response.status === 429) {
+          logDiag("[429検知] Flash 3.8の上限を検知。3時間バイパス記憶をセットし、Flash 3.5 liteへ即時切り替えます", "warn");
+          STATE.proLockUntil = Date.now() + 3 * 3600 * 1000;
+          localStorage.setItem('miichu_pro_lock_until', STATE.proLockUntil);
+
+          modelBadge.className = 'model-badge bypass';
+          modelBadge.textContent = '⚡ Flash 3.5 lite (自動引継ぎ)';
+
+          // 待たずに3.5 liteへ瞬時にリクエスト！
+          response = await sendToInteractionsAPI(MODELS.lite, systemPrompt, promptText);
+        }
+
+        if (!response.ok) {
+          const errBody = await response.text();
+          rawError = `HTTP ${response.status}: ${errBody}`;
+          logDiag(`[API通信エラー] ${rawError}`, "error");
+        } else {
+          const resData = await response.json();
+          replyText = smartExtractText(resData);
+          logDiag(`[API応答成功] 「${replyText}」`, "success");
+        }
+      } catch (err) {
+        rawError = err.message || "通信エラー";
+        logDiag(`[通信例外] ${rawError}`, "error");
+      }
+
+      stopTimer();
+      STATE.isThinking = false;
+
+      if (replyText) {
+        const cleanDisplay = replyText.replace(/[*#_~`]/g, '').trim();
+        speechBubble.textContent = cleanDisplay;
+
+        if (cleanDisplay.includes('！') || cleanDisplay.includes('好き') || cleanDisplay.includes('ありがとう')) {
+          setEmotion('happy');
+        } else {
+          setEmotion('talking');
+        }
+
+        speakVoice(cleanDisplay);
+      } else {
+        setEmotion('idle');
+        speechBubble.classList.add('has-error');
+        let errorUserMsg = "みゃう？電波が途切れちゃったニャ。もう一度お話ししてニャ！";
+        speechBubble.textContent = errorUserMsg;
+        speakVoice(errorUserMsg);
+      }
+    }
+
+    /* ==========================================================
+       8. 音声合成（GCバグ防止 ＆ マイク完全干渉遮断）
+       ========================================================== */
+    let availableVoices = [];
+
+    function populateVoiceList() {
+      if (!('speechSynthesis' in window)) return;
+      availableVoices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
+
+      voiceSelect.innerHTML = '';
+      if (availableVoices.length === 0) availableVoices = window.speechSynthesis.getVoices();
+
+      availableVoices.forEach((voice) => {
+        const option = document.createElement('option');
+        option.value = voice.voiceURI;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        if (voice.voiceURI === STATE.selectedVoiceURI) option.selected = true;
+        voiceSelect.appendChild(option);
+      });
+    }
+
+    if ('speechSynthesis' in window) {
+      populateVoiceList();
+      window.speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    function getSelectedVoice() {
+      if (STATE.selectedVoiceURI) {
+        const found = availableVoices.find(v => v.voiceURI === STATE.selectedVoiceURI);
+        if (found) return found;
+      }
+      return availableVoices.find(v => v.name.includes('Ayumi') || v.name.includes('Haruka') || v.name.includes('Kyoko') || v.name.includes('Google') || v.name.includes('Sayaka')) || availableVoices[0];
+    }
+
+    function speakVoice(rawText) {
+      if (!('speechSynthesis' in window)) return;
+
+      STATE.isSpeaking = true;
+      statusText.textContent = "🗣️ お話し中";
+
+      window.speechSynthesis.cancel();
+      window._speechLockHolder = [];
+
+      const normalized = cleanTextForSpeech(rawText);
+      const safeSpokenText = normalized + "…………。";
+
+      logDiag(`[音声再生] 読上テキスト: 「${normalized}」`, "info");
+
+      const uttr = new SpeechSynthesisUtterance(safeSpokenText);
+      uttr.lang = 'ja-JP';
+      uttr.pitch = STATE.pitch;
+      uttr.rate = STATE.rate;
+
+      const chosenVoice = getSelectedVoice();
+      if (chosenVoice) uttr.voice = chosenVoice;
+
+      // GCによる強制破棄を完全防止
+      window._speechLockHolder.push(uttr);
+
+      uttr.onend = () => {
+        logDiag("[音声終了] onend検知。スピーカー余韻待機（700ms）", "info");
+        window._speechLockHolder = [];
+        STATE.isSpeaking = false;
+
+        setTimeout(() => {
+          if (!STATE.isPaused && !STATE.isThinking) {
+            setEmotion('idle');
+            logDiag("[マイク復帰] 音声入力待機を開始", "success");
+            startListening();
+          }
+        }, 700);
+      };
+
+      uttr.onerror = (e) => {
+        logDiag(`[音声エラー] ${e.error}`, "error");
+        window._speechLockHolder = [];
+        STATE.isSpeaking = false;
+        if (!STATE.isPaused) {
+          setEmotion('idle');
+          startListening();
+        }
+      };
+
+      window.speechSynthesis.speak(uttr);
+    }
+
+    /* ==========================================================
+       9. 音声認識（常時待機）
+       ========================================================== */
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        STATE.isListening = true;
+        avatarWrapper.classList.add('is-listening');
+        statusText.textContent = "👂 聴いてるニャ";
+        logDiag("[マイク] 音声待機中...", "info");
+      };
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        if (text.trim()) {
+          logDiag(`[聞き取り成功] 「${text}」`, "success");
+          speechBubble.textContent = `「${text}」ニャね！`;
+          askGemini(text);
+        }
+      };
+
+      recognition.onerror = (e) => {
+        stopListening();
+        if (e.error !== 'no-speech') {
+          logDiag(`[マイクエラー] ${e.error}`, "warn");
+        }
+        if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) {
+          setTimeout(() => {
+            if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening();
+          }, 400);
+        }
+      };
+
+      recognition.onend = () => {
+        stopListening();
+        if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) {
+          setTimeout(() => {
+            if (!STATE.isPaused && !STATE.isThinking && !STATE.isSpeaking) startListening();
+          }, 300);
+        }
+      };
+    }
+
+    function startListening() {
+      if (!recognition || STATE.isPaused || STATE.isThinking || STATE.isSpeaking) return;
+      try { recognition.start(); } catch (e) {}
+    }
+
+    function stopListening() {
+      STATE.isListening = false;
+      avatarWrapper.classList.remove('is-listening');
+      if (recognition) {
+        try { recognition.abort(); } catch(e) {}
+      }
+    }
+
+    function togglePause() {
+      STATE.isPaused = !STATE.isPaused;
+      if (STATE.isPaused) {
+        pauseBtn.classList.add('is-paused');
+        pauseIcon.textContent = "🛑";
+        pauseText.textContent = "お休み中（クリックで再開）";
+        statusText.textContent = "💤 お昼寝中";
+        speechBubble.textContent = "みーちゅはお昼寝中ニャ…💤 お話しする時はボタンを押してニャ！";
+        setEmotion('idle');
+        stopListening();
+        window.speechSynthesis.cancel();
+        logDiag("[状態] 一時停止（お昼寝中）", "info");
+      } else {
+        pauseBtn.classList.remove('is-paused');
+        pauseIcon.textContent = "🟢";
+        pauseText.textContent = "会話中（話しかけてニャ）";
+        speechBubble.textContent = "起きたニャ！いつでも声で話しかけてニャ🐾";
+        setEmotion('idle');
+        logDiag("[状態] 会話を再開", "info");
+        startListening();
+      }
+    }
+
+    /* ==========================================================
+       10. 設定モーダル
+       ========================================================== */
+    pauseBtn.addEventListener('click', togglePause);
+
+    voicePitch.addEventListener('input', (e) => {
+      pitchVal.textContent = parseFloat(e.target.value).toFixed(2);
+    });
+    voiceRate.addEventListener('input', (e) => {
+      rateVal.textContent = parseFloat(e.target.value).toFixed(2);
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      document.getElementById('api-key-input').value = STATE.apiKey;
+      voicePitch.value = STATE.pitch;
+      pitchVal.textContent = STATE.pitch.toFixed(2);
+      voiceRate.value = STATE.rate;
+      rateVal.textContent = STATE.rate.toFixed(2);
+      populateVoiceList();
+      modalOverlay.style.display = 'flex';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) modalOverlay.style.display = 'none';
+    });
+
+    saveSettingsBtn.addEventListener('click', () => {
+      STATE.apiKey = document.getElementById('api-key-input').value.trim();
+      STATE.selectedVoiceURI = voiceSelect.value;
+      STATE.pitch = parseFloat(voicePitch.value);
+      STATE.rate = parseFloat(voiceRate.value);
+
+      localStorage.setItem('miichu_api_key', STATE.apiKey);
+      localStorage.setItem('miichu_voice_uri', STATE.selectedVoiceURI);
+      localStorage.setItem('miichu_pitch', STATE.pitch);
+      localStorage.setItem('miichu_rate', STATE.rate);
+
+      modalOverlay.style.display = 'none';
+      logDiag("[設定保存] APIキーと音声設定を更新しました", "success");
+      const msg = "設定を保存したニャ！この声でいっぱいお話しするニャ🐾";
+      speechBubble.textContent = msg;
+      speakVoice(msg);
+    });
+
+    window.addEventListener('load', () => {
+      const savedX = localStorage.getItem('miichu_pos_x');
+      const savedY = localStorage.getItem('miichu_pos_y');
+      if (savedX && savedY) {
+        petContainer.style.bottom = 'auto';
+        petContainer.style.right = 'auto';
+        petContainer.style.left = savedX;
+        petContainer.style.top = savedY;
+      }
+      logDiag("システム初期化完了。音声待機を開始します。", "success");
+      setTimeout(() => {
+        if (!STATE.isPaused) startListening();
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
+
