@@ -1,27 +1,24 @@
 
-// [作業版 Rev.2] バージョンハードコード撤廃・絵日記写真日付完全ロック・過去写真引き継ぎ遮断
+// [作業版 Rev.1] ステータス完全一元管理・朗読タップ復旧・手描きスケッチカード・日記レイアウト最適化・検索3段階使い分け
 /* ==========================================================================
-   AIペット 共通対話エンジン＆中央司令塔OS（Rev.2）
+   AIペット 共通対話エンジン＆中央司令塔OS（v1.1.2 Rev.1）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
-   - 【バージョン一元管理】ハードコードを完全撤廃し version.js (VersionManager.current) と100%動的同期
-   - 【絵日記写真日付完全ロック】写真プールへの保存・参照を対象日（lifeKey）に厳格固定し、別日混入を物理遮断
-   - 【写真なし日の過去引き継ぎ遮断】撮影写真がない日は過去の写真を代用せず「写真なし」として正しく処理
-   - 【カード救済ロジック完全共通化】AIのセリフの言い回し依存を撤廃し、おてつだい時の検索カード発行を100%確実化
-   - 【プラグイン写真プロンプト完全連動】写真撮影時のセリフ・AI思考依頼・吹き出しを各キャラ定義から動的取得
+   - 【バージョン一元管理】version.js (VersionManager.current) と100%動的同期
+   - 【ステータス完全一元管理】AppCore.setStatus新設によりマイクON（緑パルス）・発話（青）・思考（橙）を完全同期
+   - 【朗読機能完全復旧】closestタップ判定・本文直接参照・本文巻き込み防止により確実に読み聞かせ
+   - 【写真なし日スケッチカード】写真がない日は温かみのある手描き風スケッチイラストを自動表示
+   - 【日記帳1画面最適化】レイアウトの余白と伸縮比率を再調整し、最後のひとことがスクロールせず美しく収まる
+   - 【検索3段階使い分け】一般的な質問や雑学はAIが音声解説、要求時のみGoogleマップ・ニュースカード発行
+   - 【新個性完全連動】クロちゃん（膝・おなか乗り、前世発明）、シロくん（未来研究所、右肩・左腕とまり）
+   - 【絵日記写真日付完全ロック】写真プールへの保存・参照を対象日（lifeKey）に厳格固定し別日混入遮断
+   - 【写真なし日の過去引き継ぎ遮断】撮影写真がない日は過去の写真を代用せず正しく処理
    - 【今どこ町名高精度完全復帰】「今どこ？」の回答を「〇〇市〇〇町付近」の高精度で回答
    - 【GoogleマップGPS二重強化】検索クエリに町名レベルエリア＋精密GPS座標（&ll=&center=）を二重連携
    - 【キャラ別音声保持】キャラごとに選択したVOICEVOX音声を個別記憶・復元
-   - 【居眠り時待機姿勢＆目閉じ強制】停止ボタン押下時に即座にIdle姿勢へ固定し確実に閉眼させてからあくび・居眠り導入
-   - 【UIアイコン完全同期】絵日記カード・アルバムのひとことアイコン（クロ: 🐾 / シロ: 🦉）を完全照合
-   - 【ベクター感情完全連動】変身時のアニメキャラ表示復帰＆シロくん羽ばたき・クロちゃんポーズ・瞬き完全同期
-   - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを元祖仕様へ100%完全復帰
-   - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）の上からスッと閉じる自然な瞬き
-   - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
-   - 【発話サニタイズ】セリフから生URL文字列を物理除去しVOICEVOXのURL読み上げを完全根絶
-   - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
+   - 【居眠り時待機姿勢＆目閉じ強制】停止ボタン押下時に即座にIdle姿勢固定＆自然閉眼・居眠り導入
    - 【新・とりけし保護エンジン】直前の誤認識発言・ログを画面とストレージから安全にロールバック
-   - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
+   - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    ========================================================================== */
 
 /* ==========================================================================
@@ -378,7 +375,7 @@ class CatAvatarRenderer {
 }
 
 /* ==========================================================================
-   MODULE 5: Gemini AI思考エンジン
+   MODULE 5: Gemini AI思考エンジン（検索3段階使い分け対応版）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -608,9 +605,6 @@ class AIThoughtEngine {
               if (fallbackCards.length > 0) cards = fallbackCards;
             }
 
-            const badge = document.getElementById('model-badge');
-            if (badge) badge.textContent = `${cur.id === 'shiro' ? '🦉' : '🐾'} ${cleanModel.replace('gemini-', '')}`;
-
             Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}] (カード:${cards.length}件)`, "success");
             this.activeAbortController = null;
             return { success: true, text: clean, groundingCards: cards };
@@ -637,7 +631,7 @@ class AIThoughtEngine {
     this.activeAbortController = null;
     if (this.isUserCancelled) return { success: false, aborted: true };
 
-    Logger.log(`[AI] ⏱️ 16秒タイムアウト（8秒＋8秒打ち切り完了・案3セリフ発動）`, "warn");
+    Logger.log(`[AI] ⏱️ 16秒タイムアウト（8秒＋8秒打ち切り完了・安全セリフ発動）`, "warn");
     const timeoutMsg = cur.id === 'shiro'
       ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！"
       : "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
@@ -719,32 +713,36 @@ class AIThoughtEngine {
     return cards;
   }
 
+  // ★重要：質問や雑談ではカードを出さず、要求意図動詞がある時のみカードを発行する3段階使い分け
   _detectCardsFromSpeech(speechText, userPrompt) {
     if (!AppCore.state.isAssistantMode) return [];
 
-    const combined = `${userPrompt} ${speechText}`;
+    const prompt = userPrompt || "";
 
-    const isNewsTarget = /(?:ニュース|速報|ヘッドライン|トピックス|最新情報|大谷|話題)/i.test(combined);
-    if (isNewsTarget) {
-      const newsMatch = combined.match(/(?:大谷翔平|プロ野球|天気|東村山|政治|経済|話題)/);
+    // 1. ニュース要求判定：「ニュース」「速報」などを求めた時のみ発行
+    const hasNewsDemand = /(?:ニュース|速報|ヘッドライン|トピックス).*(?:教えて|見せて|知りたい|ちょうだい|ある|流して)|(?:教えて|見せて).*(?:ニュース|速報)/.test(prompt);
+    if (hasNewsDemand) {
+      const newsMatch = prompt.match(/(?:大谷翔平|大谷|プロ野球|天気|東村山|政治|経済|話題)/);
       const topic = newsMatch ? newsMatch[0] : "最新ニュース";
-      Logger.log(`[Tool] 📰 救済ロジック発動: ニュースカード発行（${topic}）`, "info");
+      Logger.log(`[Tool] 📰 意図検知: ニュースカード発行（${topic}）`, "info");
       return this._createSmartNewsCards(topic);
     }
 
-    const spotMatch = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|満洲|ラーメン|つけ麺|ホルモン|餃子|焼肉|寿司|鮨|カレー|うどん|そば|中華|イタリアン|居酒屋|カフェ|喫茶店|公園|ベンチ|散歩コース|休憩スポット|スポット|散策)/);
-    const hasSearchIntent = /(?:探して|教えて|どこ|場所|近く|案内|おすすめ|行きたい|食べたい)/.test(combined);
-
-    if (spotMatch || hasSearchIntent) {
-      const spot = spotMatch ? spotMatch[0] : "おすすめスポット";
-      Logger.log(`[Tool] 📍 救済ロジック発動: マップカード発行（${spot}）`, "info");
-      return this._createSmartMapCards(spot, LocationProvider.detailedTownArea || LocationProvider.cleanCityOnly);
+    // 2. マップ・スポット要求判定：「探して」「どこ」「案内して」「行きたい」「食べたい」等の動詞がある時のみ発行
+    const hasMapSearchIntent = /(?:探して|教えて|どこ|場所|近く|案内|行きたい|食べたい|寄りたい|連れてって)/.test(prompt);
+    if (hasMapSearchIntent) {
+      const spotMatch = prompt.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|満洲|ラーメン|つけ麺|ホルモン|餃子|焼肉|寿司|鮨|カレー|うどん|そば|中華|イタリアン|居酒屋|カフェ|喫茶店|公園|ベンチ|散歩コース|休憩スポット|スポット|散策)/);
+      if (spotMatch) {
+        const spot = spotMatch[0];
+        Logger.log(`[Tool] 📍 意図検知: マップカード発行（${spot}）`, "info");
+        return this._createSmartMapCards(spot, LocationProvider.detailedTownArea || LocationProvider.cleanCityOnly);
+      }
     }
 
+    // 3. 一般的な質問や解説要求の場合はカードを発行せずAIが言葉で解説
     return [];
   }
 
-  // ★重要：生活日（targetLifeDateKey）と紐づく当日の写真プールのみを参照し、写真なし日は厳格にnullを返却
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -801,10 +799,9 @@ class AIThoughtEngine {
             }
           }
 
-          content = content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+          content = content.replace(/^【[^】]+】\s*\n*/u, '').trim();
           content = content.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
-          // ★修正：その日の日付に厳格一致する写真プールからのみ取得（無ければnullで固定）
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
           const chosenPhoto = (pool && pool.length > 0) ? pool[0].base64 : null;
 
@@ -843,6 +840,31 @@ const AppCore = {
   avatar: null,
   memories: [],
   todayLogs: [],
+
+  // ★重要：ステータス文字と状態クラス（エメラルドグリーン発光等）を完全に同期させる共通メソッド
+  setStatus(state, customText = null) {
+    const st = document.getElementById('status-text');
+    if (!st) return;
+
+    st.classList.remove('status-hearing', 'status-speaking', 'status-thinking', 'status-sleeping');
+
+    const cur = getCurChar();
+    const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+
+    if (state === 'hearing') {
+      st.classList.add('status-hearing');
+      st.textContent = customText || `👂 聴いてる${suffix}`;
+    } else if (state === 'speaking') {
+      st.classList.add('status-speaking');
+      st.textContent = customText || "🗣️ お話し中♪";
+    } else if (state === 'thinking') {
+      st.classList.add('status-thinking');
+      st.textContent = customText || (cur.id === 'shiro' ? "💭 計算中ホ…" : "💭 考え中ニャ…");
+    } else if (state === 'sleeping') {
+      st.classList.add('status-sleeping');
+      st.textContent = customText || "💤 すやすやお休み中…";
+    }
+  },
 
   getSpeakerId() {
     const cur = getCurChar();
@@ -923,9 +945,8 @@ const AppCore = {
     if (snackIcon) snackIcon.textContent = isShiro ? '🌰' : '🐟';
     if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
 
-    // ★重要：VersionManager.current を利用しバージョン文字列のハードコードを撤廃
     const verTag = document.getElementById('app-footer-version-tag');
-    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.1";
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.2";
     if (verTag) verTag.textContent = isShiro ? `🦉 シロくん（ホウ博士） ${curVer}` : `🐾 クロちゃん ${curVer}`;
 
     const studioTitle = document.getElementById('studio-top-title-text');
@@ -1010,7 +1031,6 @@ const AppCore = {
 
     this._renderMemories();
     this._restoreTimelineHistory();
-    this._updateModelBadge();
     this._updateStorageMonitorUI();
     this._syncEyelidInputsToActiveChar();
 
@@ -1036,8 +1056,13 @@ const AppCore = {
     this.checkAndFinalizeYesterdayDiary();
     this._startIdleSoliloquyWatcher();
 
-    setTimeout(() => { if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening(); }, 500);
-    Logger.log(`[AppCore] 全システム正常稼働！パートナー: ${getCurChar().name} ロード完了！`, "success");
+    setTimeout(() => {
+      if (this.state.isRunning && !this.audio.isSpeechProducing) {
+        this.setStatus('hearing');
+        this.audio.startListening();
+      }
+    }, 500);
+    Logger.log(`[AppCore] 全システム正常稼働！パートナー: ${getCurChar().name} (v1.1.2) ロード完了！`, "success");
   },
 
   _bindDeviceWakeWatcher() {
@@ -1137,8 +1162,18 @@ const AppCore = {
 
   _startIdleSoliloquyWatcher() {
     if (this.state.idleSoliloquyTimer) clearInterval(this.state.idleSoliloquyTimer);
-    const phrasesKuro = ["ふぁ〜あ…（あくび）💤", "おやびん、なにしてるのかニャ〜？🐾", "今日もちゅ〜る食べたいニャン♪🐟", "おやびんの近くは落ち着くニャ〜♡"];
-    const phrasesShiro = ["ふぁ〜あ…（羽を伸ばす）💤", "助手よ、研究の進捗はどうホ？🦉", "木の実でもつまみながら読書したいホな…", "助手の近くは集中できるホ…"];
+    const phrasesKuro = [
+      "おやびんのお膝、あったかくて大好きなんだニャ〜♡🐾",
+      "前世の超発明ノート、どこに埋めたっけニャ…？💭",
+      "おやびんのおなかの上で丸くなってゴロゴロしたいニャン♪",
+      "ふぁ〜あ…（あくび）ちゅ〜る食べたいニャ〜🐟"
+    ];
+    const phrasesShiro = [
+      "助手の右肩の上は、絶妙な重量バランスで最高ホな…🦉",
+      "強風注意報ホ！ボクが飛ばされないよう見ておくが良いホ！",
+      "未来の研究所に戻る方法を計算中ホ…でも助手との暮らしも悪くないホな。",
+      "ふぁ〜あ…（羽をパタパタ）木の実でもかじるホ！"
+    ];
 
     this.state.idleSoliloquyTimer = setInterval(() => {
       const now = Date.now();
@@ -1246,9 +1281,7 @@ const AppCore = {
       this.state.isDiaryReading = false;
       this._updateDiaryReadBtnUI(false);
       this.audio.playEffect('aizuchi');
-      const st = document.getElementById('status-text');
-      const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-      if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+      if (this.state.isRunning) this.setStatus('hearing');
     };
 
     this.audio.onSpeechFinal = (finalText) => {
@@ -1260,10 +1293,8 @@ const AppCore = {
     };
 
     this.audio.onListeningStatus = () => {
-      const st = document.getElementById('status-text');
-      const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-      if (st && this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing && !this.state.isThinking && !this.audio.isActionButtonLocked) {
-        st.textContent = `👂 聴いてる${suffix}`;
+      if (this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing && !this.state.isThinking && !this.audio.isActionButtonLocked) {
+        this.setStatus('hearing');
       }
     };
   },
@@ -1272,7 +1303,9 @@ const AppCore = {
     const modal = document.getElementById('photo-lightbox-modal');
     if (modal) {
       modal.onclick = (e) => {
-        if (e.target.id === 'photo-lightbox-modal' || e.target.id === 'btn-lightbox-close') modal.classList.remove('is-open');
+        if (e.target.id === 'photo-lightbox-modal' || e.target.closest('#btn-lightbox-close')) {
+          modal.classList.remove('is-open');
+        }
       };
     }
   },
@@ -1336,7 +1369,7 @@ const AppCore = {
     const card = document.createElement('div');
     card.className = 'timeline-diary-card';
 
-    let cleanBody = (diaryData.content || '').replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+    let cleanBody = (diaryData.content || '').replace(/^【[^】]+】\s*\n*/u, '').trim();
 
     card.innerHTML = `
       <div class="timeline-diary-header">
@@ -1706,7 +1739,6 @@ const AppCore = {
   async executeThought(promptText, photoBase64 = null, isPhotoAlreadyLogged = false) {
     this.state.isThinking = true;
     if (this.avatar && this.state.isRunning) this.avatar.setEmotion('thinking');
-    const st = document.getElementById('status-text');
     const cur = getCurChar();
     const isShiro = (cur.id === 'shiro');
 
@@ -1718,7 +1750,7 @@ const AppCore = {
       ? (cur.photoThinkingBubble || (isShiro ? "ホウ博士が観察・分析中ホ…📷✨" : "クロがお写真を見てるニャ…📷✨"))
       : (isShiro ? `${cur.title || cur.name}が計算中ホ…💭` : `${cur.name}が考えてるニャ…💭`);
 
-    if (st && this.state.isRunning) st.textContent = statusText;
+    this.setStatus('thinking', statusText);
     const bubble = this.renderBubble('model', bubbleText);
     
     try {
@@ -1739,8 +1771,7 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+          this.setStatus('hearing');
         });
         return;
       }
@@ -1777,8 +1808,7 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+          this.setStatus('hearing');
         });
       } else {
         const fb = cur.id === 'shiro'
@@ -1790,8 +1820,7 @@ const AppCore = {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+          this.setStatus('hearing');
         });
       }
     } catch (err) {
@@ -1805,28 +1834,17 @@ const AppCore = {
         if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
         this.state.isThinking = false;
         this.state.isProcessingInput = false;
-        const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-        if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+        this.setStatus('hearing');
       });
     } finally {
       setTimeout(() => {
         if (this.state.isProcessingInput && !this.audio.isSpeaking && !this.audio.isReadingAloud && !this.audio.isSpeechProducing) {
           this.state.isProcessingInput = false;
           this.state.isThinking = false;
-          const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-          if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+          this.setStatus('hearing');
           if (this.state.isRunning) this.audio.startListening();
         }
       }, 10000);
-    }
-  },
-
-  _updateModelBadge() {
-    const badge = document.getElementById('model-badge');
-    const cur = getCurChar();
-    if (badge) {
-      badge.className = "model-badge lite";
-      badge.textContent = `${cur.id === 'shiro' ? '🦉' : '🐾'} 3.5 Flash Lite`;
     }
   },
 
@@ -1834,15 +1852,13 @@ const AppCore = {
     this.resetActivityTimer();
     this.audio.stopListening();
     this.audio.isActionButtonLocked = true;
-    const st = document.getElementById('status-text');
-    if (st && this.state.isRunning) st.textContent = statusDisplay;
+    this.setStatus('speaking', statusDisplay);
 
     if ((localStorage.getItem('kuro_button_feedback') || 'voice') === 'mute') {
       this.audio.playEffect('aizuchi');
       setTimeout(() => {
         this.audio.isActionButtonLocked = false;
-        const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-        if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+        this.setStatus('hearing');
         if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
       }, 400);
       return;
@@ -1852,8 +1868,7 @@ const AppCore = {
       if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
     }, () => {
       if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-      const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-      if (st && this.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+      this.setStatus('hearing');
       this.audio.isActionButtonLocked = false;
     }, cooldownMs);
   },
@@ -1901,7 +1916,10 @@ const AppCore = {
       this.state.isDiaryReading = false;
       this._updateDiaryReadBtnUI(false);
       modal?.classList.remove('is-open');
-      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) {
+        this.setStatus('hearing');
+        this.audio.startListening();
+      }
     });
 
     document.getElementById('btn-studio-prev-page')?.addEventListener('click', () => {
@@ -1922,14 +1940,27 @@ const AppCore = {
       const saveAck = getCurChar().id === 'shiro' ? "絵日記を保存したホ！📖✨" : "絵日記を保存したニャン♪📖✨";
       Toast.show(saveAck, "success");
       modal?.classList.remove('is-open');
-      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) {
+        this.setStatus('hearing');
+        this.audio.startListening();
+      }
     });
 
+    // ★重要：朗読ボタンのタップ判定をclosestで完全防護し、画面の最新テキストを直接読み上げる
     document.addEventListener('click', (e) => {
-      if (e.target && e.target.id === 'btn-read-diary-aloud') {
+      const readBtn = e.target.closest('#btn-read-diary-aloud');
+      if (readBtn) {
+        this.resetActivityTimer();
+        this.audio.unlockMasterAudio();
+
         const curDateKey = this.state.studioDateKeys[this.state.studioCurrentDateIdx];
         const diary = StorageManager.getDiary(curDateKey);
-        if (!diary || !diary.content) return;
+        const latestText = document.getElementById('studio-diary-text')?.value || diary?.content;
+
+        if (!latestText || latestText.trim().length === 0) {
+          Toast.show("読む日記の本文がありません", "info");
+          return;
+        }
 
         if (this.state.isDiaryReading) {
           this.audio.stopReadingAloud();
@@ -1938,7 +1969,7 @@ const AppCore = {
         } else {
           this.state.isDiaryReading = true;
           this._updateDiaryReadBtnUI(true);
-          this.audio.readDiarySeamless(diary.content, null, null, () => {
+          this.audio.readDiarySeamless(latestText, null, null, () => {
             this.state.isDiaryReading = false;
             this._updateDiaryReadBtnUI(false);
           });
@@ -1969,6 +2000,7 @@ const AppCore = {
     document.getElementById('book-studio-modal')?.classList.add('is-open');
   },
 
+  // ★重要：写真なし日の手描きスケッチイラスト（アイディア2）＆ひとことスクロールなし1画面最適化
   _renderStudioDiaryPage() {
     const pageContainer = document.getElementById('studio-diary-single-page');
     const pageIndicator = document.getElementById('studio-page-indicator');
@@ -2068,7 +2100,6 @@ const AppCore = {
           ? `今日も助手と一緒に充実した研究活動を行えたホ！`
           : `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
         const comment = isShiro ? "助手を信頼しているホ！" : "おやびん大好きニャ！";
-        // ★修正：写真がない日はnullを渡し、無関係な写真が登録されるのを防止
         const photoToSave = (photoPool && photoPool.length > 0) ? photoPool[0].base64 : null;
         StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoToSave, 0, comment);
         this._renderStudioDiaryPage();
@@ -2076,6 +2107,21 @@ const AppCore = {
       });
       return;
     }
+
+    const hasPhotos = (photoPool && photoPool.length > 0) || !!diary.photo;
+
+    // 天気やキャラに応じた可愛いスケッチ風イラストの定義
+    const sketchIcon = isShiro
+      ? (diary.weather === '快晴' ? '🦉☀️' : (diary.weather === '雨' ? '🦉🌧️' : '🦉🔭'))
+      : (diary.weather === '快晴' ? '🐾☀️' : (diary.weather === '雨' ? '🐾☔' : '🐾🌸'));
+
+    const sketchTitle = isShiro
+      ? `本日の観測スケッチ（ホウ博士 筆）`
+      : `クロのお絵描きスケッチ（クロ 筆）`;
+
+    const sketchSubtitle = isShiro
+      ? `『今日は写真の代わりにボクがスケッチを描いたホ！観察結果は良好だホ！』`
+      : `『写真の代わりにクロが一生懸命お絵描きしたニャン♪おやびん見てニャ！』`;
 
     pageContainer.innerHTML = `
       <div class="book-page-sheet">
@@ -2090,23 +2136,36 @@ const AppCore = {
           </div>
         </div>
 
-        <div class="diary-photo-duo-container">
-          <div class="photo-duo-left" id="book-photo-box">
-            ${diary.photo ? `<img src="${diary.photo}" class="book-photo-img"><span class="book-photo-zoom-hint">🔍 拡大</span>` : '<span style="font-size:11px;color:#ea580c;">写真なし</span>'}
-          </div>
-          <div class="photo-duo-right">
-            <div class="duo-right-header"><span>📷 スナップ一覧（${photoPool.length}枚）</span></div>
-            <div class="duo-right-grid-horizontal">
-              ${photoPool.length === 0 ? '<span style="font-size:10px;color:#94a3b8;margin:auto;">スナップなし</span>' : ''}
-              ${photoPool.map((p, idx) => `
-                <div class="snap-grid-item ${diary.photo === p.base64 ? 'is-selected' : ''}" data-idx="${idx}">
-                  <img src="${p.base64}" class="snap-grid-img">
-                  <button type="button" class="btn-snap-del" data-del="${idx}">✕</button>
-                </div>
-              `).join('')}
+        ${hasPhotos ? `
+          <div class="diary-photo-duo-container">
+            <div class="photo-duo-left" id="book-photo-box">
+              ${diary.photo ? `<img src="${diary.photo}" class="book-photo-img"><span class="book-photo-zoom-hint">🔍 拡大</span>` : '<span style="font-size:11px;color:#ea580c;">メイン写真選択中</span>'}
+            </div>
+            <div class="photo-duo-right">
+              <div class="duo-right-header"><span>📷 スナップ一覧（${photoPool.length}枚）</span></div>
+              <div class="duo-right-grid-horizontal">
+                ${photoPool.map((p, idx) => `
+                  <div class="snap-grid-item ${diary.photo === p.base64 ? 'is-selected' : ''}" data-idx="${idx}">
+                    <img src="${p.base64}" class="snap-grid-img">
+                    <button type="button" class="btn-snap-del" data-del="${idx}">✕</button>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
-        </div>
+        ` : `
+          <!-- ★ 写真なし日：愛らしい手描きスケッチイラストカード（アイディア2） -->
+          <div class="diary-sketch-duo-container">
+            <div class="sketch-art-box">
+              <span class="sketch-icon-stamp">${sketchIcon}</span>
+              <div class="sketch-text-box">
+                <span class="sketch-title">🎨 ${sketchTitle}</span>
+                <span class="sketch-subtitle">${sketchSubtitle}</span>
+              </div>
+            </div>
+            <button type="button" class="btn-sketch-add-photo" id="btn-sketch-upload-trigger">📷 写真を貼る</button>
+          </div>
+        `}
 
         <div class="book-content-box">
           <textarea class="book-diary-textarea" id="studio-diary-text">${diary.content}</textarea>
@@ -2140,6 +2199,11 @@ const AppCore = {
       if (diary.photo) this.openPhotoLightbox(diary.photo, `📖 ${diary.fullDate} の思い出写真`);
     });
 
+    // スケッチカード内の「📷 写真を貼る」ボタンでカメラ・ファイル入力を呼び出す
+    document.getElementById('btn-sketch-upload-trigger')?.addEventListener('click', () => {
+      document.getElementById('camera-photo-input')?.click();
+    });
+
     document.getElementById('btn-del-cur-diary')?.addEventListener('click', () => {
       if (window.confirm(`「${diary.fullDate}」の日記を削除しますか？\n（※会話ログやお写真はそのまま安全に残ります）`)) {
         let allDiaries = StorageManager.loadAllDiaries();
@@ -2152,7 +2216,7 @@ const AppCore = {
 
     pageContainer.querySelectorAll('.snap-grid-item').forEach(item => {
       item.onclick = (e) => {
-        if (e.target.classList.contains('btn-snap-del')) return;
+        if (e.target.closest('.btn-snap-del')) return;
         const selected = photoPool[parseInt(item.dataset.idx, 10)].base64;
         diary.photo = selected;
         StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
@@ -2682,8 +2746,8 @@ const AppCore = {
       const waitAck = cur.id === 'shiro' ? "指示を待っているホ！" : "おやびんの声を待ってるニャン♪🐾";
       Toast.show(waitAck, "info");
       const ackVoice = cur.id === 'shiro' ? "うむ！" : "はーい！";
-      const statusAck = cur.id === 'shiro' ? "👂 聴いてるホ♪" : "👂 聴いてるニャ♪";
-      this.triggerActionVoice(ackVoice, statusAck);
+      this.setStatus('hearing');
+      this.triggerActionVoice(ackVoice, `👂 聴いてる${cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪'}`);
     });
 
     document.getElementById('pause-btn')?.addEventListener('click', () => {
@@ -2691,7 +2755,6 @@ const AppCore = {
       const btn = document.getElementById('pause-btn');
       const wrap = document.getElementById('avatar-wrapper');
       const petContainer = document.getElementById('pet-container');
-      const st = document.getElementById('status-text');
       const cur = getCurChar();
 
       btn?.classList.toggle('is-paused', !this.state.isRunning);
@@ -2710,7 +2773,7 @@ const AppCore = {
         this.state.isDiaryReading = false;
 
         petContainer?.classList.add('is-paused-mode');
-        if (st) st.textContent = "💤 すやすやお休み中…";
+        this.setStatus('sleeping');
 
         if (this.avatar) {
           this.avatar.setEmotion('idle');
@@ -2729,8 +2792,7 @@ const AppCore = {
           this.avatar.setEmotion('idle');
           this.avatar.applyEyelidTransforms();
         }
-        const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-        if (st) st.textContent = `👂 聴いてる${suffix}`;
+        this.setStatus('hearing');
 
         const wakeMsg = cur.id === 'shiro'
           ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
@@ -2739,7 +2801,7 @@ const AppCore = {
         this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
           if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
         });
-        Logger.log(`[Status] 🟢 会話中復帰`, "info");
+        Logger.log(`[Status] 🟢 会話中復帰（エメラルドグリーン点灯）`, "info");
       }
     });
 
@@ -2756,17 +2818,17 @@ const AppCore = {
       let partMsg = "";
       if (cur.id === 'shiro') {
         if (clickYRatio < 0.35) {
-          partMsg = "頭を撫でるなホ…！羽毛が乱れるホ…///（パタパタ）";
+          partMsg = "頭を撫でるなホ…！羽毛が乱れるホ…///（両翼パタパタ）";
         } else if (clickYRatio < 0.68) {
-          partMsg = "フ、フン…ボクを褒めても何も出ないホよ！///（羽パタパタ）";
+          partMsg = "フ、フン…ボクを褒めても何も出ないホよ！///（羽パタパタパタ）";
         } else {
-          partMsg = "そこはお腹の羽毛ホ！…くすぐったいホな！";
+          partMsg = "そこはお腹の羽毛ホ！…くすぐったいホな！助手の腕にとまるホ！";
         }
       } else {
         if (clickYRatio < 0.35) {
-          partMsg = "お耳ピクピク！くすぐったくて気持ちいいニャン♪👂✨";
+          partMsg = "お耳ピクピク！くすぐったくて気持ちいいニャン♪お膝に乗るニャ！🐾";
         } else if (clickYRatio < 0.68) {
-          partMsg = "あたまナデナデ大好きニャ〜極楽ニャン♡🐾";
+          partMsg = "あたまナデナデ大好きニャ〜おやびんのおなかの上に乗っちゃうニャ〜♡🐾";
         } else {
           partMsg = "そこそこ！あごの下、喉をゴロゴロ鳴らしちゃうニャン😻";
         }
@@ -2844,7 +2906,10 @@ const AppCore = {
       if (this.avatar) this.avatar.applyEyelidTransforms();
 
       document.getElementById('modal-overlay').style.display = 'none';
-      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) {
+        this.setStatus('hearing');
+        this.audio.startListening();
+      }
     };
 
     document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
@@ -2935,7 +3000,10 @@ const AppCore = {
     });
     document.getElementById('diag-close-btn')?.addEventListener('click', () => {
       document.getElementById('diag-panel')?.classList.remove('expanded');
-      if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
+      if (this.state.isRunning && !this.audio.isSpeechProducing) {
+        this.setStatus('hearing');
+        this.audio.startListening();
+      }
     });
     document.getElementById('diag-copy-evidence-btn')?.addEventListener('click', () => {
       const cur = getCurChar();
