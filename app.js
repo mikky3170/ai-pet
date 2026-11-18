@@ -1,24 +1,24 @@
-// [v1.0.0 作業版 Rev.11] カード救済ロジック完全共通化・セリフ言い回し依存脱却・おてつだい検索確実化
+
+// [作業版 Rev.2] バージョンハードコード撤廃・絵日記写真日付完全ロック・過去写真引き継ぎ遮断
 /* ==========================================================================
-   AIペット 共通対話エンジン＆中央司令塔OS（app.js）
+   AIペット 共通対話エンジン＆中央司令塔OS（Rev.2）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全切替
+   - 【バージョン一元管理】ハードコードを完全撤廃し version.js (VersionManager.current) と100%動的同期
+   - 【絵日記写真日付完全ロック】写真プールへの保存・参照を対象日（lifeKey）に厳格固定し、別日混入を物理遮断
+   - 【写真なし日の過去引き継ぎ遮断】撮影写真がない日は過去の写真を代用せず「写真なし」として正しく処理
    - 【カード救済ロジック完全共通化】AIのセリフの言い回し依存を撤廃し、おてつだい時の検索カード発行を100%確実化
    - 【プラグイン写真プロンプト完全連動】写真撮影時のセリフ・AI思考依頼・吹き出しを各キャラ定義から動的取得
-   - 【今どこ町名高精度完全復帰】「今どこ？」の回答を「〇〇市〇〇町付近」の高精度で回答（ヘッダー市名表示と完全両立）
+   - 【今どこ町名高精度完全復帰】「今どこ？」の回答を「〇〇市〇〇町付近」の高精度で回答
    - 【GoogleマップGPS二重強化】検索クエリに町名レベルエリア＋精密GPS座標（&ll=&center=）を二重連携
-   - 【キャラ別音声保持】キャラごとに選択したVOICEVOX音声を個別記憶・復元（初期値上書き完全根絶）
+   - 【キャラ別音声保持】キャラごとに選択したVOICEVOX音声を個別記憶・復元
    - 【居眠り時待機姿勢＆目閉じ強制】停止ボタン押下時に即座にIdle姿勢へ固定し確実に閉眼させてからあくび・居眠り導入
    - 【UIアイコン完全同期】絵日記カード・アルバムのひとことアイコン（クロ: 🐾 / シロ: 🦉）を完全照合
-   - 【構文エラー完全根絶】正規表現を枯れた安全標準記法に固定し、SyntaxErrorの再発を完全防止
-   - 【絵日記ひとこと完全分離】正規表現強化＆安全フォールバックによるひとこと枠への確実な格納・本文混入100%根絶
-   - 【自動日記フォーマット同期】タイムライン案内カードとアルバムモーダルの表示書式・ヘッダーを完全統一
    - 【ベクター感情完全連動】変身時のアニメキャラ表示復帰＆シロくん羽ばたき・クロちゃんポーズ・瞬き完全同期
-   - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを元祖仕様へ100%完全復帰（デグレゼロ）
+   - 【クロちゃん原状復元】目の位置計算・瞬きアニメーションを元祖仕様へ100%完全復帰
    - 【シロくん上から瞬き】首の傾きに合わせた独立幾何計算＋上端基準（top center）の上からスッと閉じる自然な瞬き
    - 【トークスタイル連動】自動/短い/普通/長いの設定保存・復元に対応
    - 【発話サニタイズ】セリフから生URL文字列を物理除去しVOICEVOXのURL読み上げを完全根絶
-   - 【しりとり・クイズ救済】2文字以下の単語ログを捨てずにGeminiへ届ける対話整合性
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    - 【新・とりけし保護エンジン】直前の誤認識発言・ログを画面とストレージから安全にロールバック
    - 【防音シールド】タイマー完了アラーム鳴動中のマイク誤認識を物理的に完全遮断
@@ -603,7 +603,6 @@ class AIThoughtEngine {
             clean = clean.replace(/余([はがものにもと])/g, `${cur.firstPerson}$1`).replace(/余/g, cur.firstPerson);
             clean = AppCore.audio.cleanEndingNenyan(clean);
 
-            // ★重要：AIがツールを実行しなかった場合でも確実にカードを発行する完全共通救済
             if (isAssistant && cards.length === 0) {
               const fallbackCards = this._detectCardsFromSpeech(clean, promptText);
               if (fallbackCards.length > 0) cards = fallbackCards;
@@ -720,13 +719,11 @@ class AIThoughtEngine {
     return cards;
   }
 
-  // ★重要：AIの言葉遣いに依存しない、堅牢なカード救済フォールバック（シロくん・クロちゃん完全共通）
   _detectCardsFromSpeech(speechText, userPrompt) {
     if (!AppCore.state.isAssistantMode) return [];
 
     const combined = `${userPrompt} ${speechText}`;
 
-    // 1. ニュース判定（ユーザーまたはAIの発言にニュース関連単語が含まれているか）
     const isNewsTarget = /(?:ニュース|速報|ヘッドライン|トピックス|最新情報|大谷|話題)/i.test(combined);
     if (isNewsTarget) {
       const newsMatch = combined.match(/(?:大谷翔平|プロ野球|天気|東村山|政治|経済|話題)/);
@@ -735,7 +732,6 @@ class AIThoughtEngine {
       return this._createSmartNewsCards(topic);
     }
 
-    // 2. 地図・スポット判定（具体的なジャンル、施設、または「探して」「教えて」「どこ」が含まれているか）
     const spotMatch = combined.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|満洲|ラーメン|つけ麺|ホルモン|餃子|焼肉|寿司|鮨|カレー|うどん|そば|中華|イタリアン|居酒屋|カフェ|喫茶店|公園|ベンチ|散歩コース|休憩スポット|スポット|散策)/);
     const hasSearchIntent = /(?:探して|教えて|どこ|場所|近く|案内|おすすめ|行きたい|食べたい)/.test(combined);
 
@@ -748,6 +744,7 @@ class AIThoughtEngine {
     return [];
   }
 
+  // ★重要：生活日（targetLifeDateKey）と紐づく当日の写真プールのみを参照し、写真なし日は厳格にnullを返却
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
     if (!this.apiKey) return { success: false };
 
@@ -807,8 +804,11 @@ class AIThoughtEngine {
           content = content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
           content = content.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
+          // ★修正：その日の日付に厳格一致する写真プールからのみ取得（無ければnullで固定）
           const pool = StorageManager.getDailyPhotoPool(lifeKey);
-          return { success: true, diaryText: content, kuroComment: extractedComment, selectedPhoto: pool[0]?.base64 || null };
+          const chosenPhoto = (pool && pool.length > 0) ? pool[0].base64 : null;
+
+          return { success: true, diaryText: content, kuroComment: extractedComment, selectedPhoto: chosenPhoto };
         }
       }
     } catch(e) {}
@@ -923,8 +923,10 @@ const AppCore = {
     if (snackIcon) snackIcon.textContent = isShiro ? '🌰' : '🐟';
     if (snackTxt) snackTxt.textContent = isShiro ? '木の実' : 'おやつ';
 
+    // ★重要：VersionManager.current を利用しバージョン文字列のハードコードを撤廃
     const verTag = document.getElementById('app-footer-version-tag');
-    if (verTag) verTag.textContent = isShiro ? '🦉 シロくん（ホウ博士） v1.0.0' : '🐾 クロちゃん v1.0.0';
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.1";
+    if (verTag) verTag.textContent = isShiro ? `🦉 シロくん（ホウ博士） ${curVer}` : `🐾 クロちゃん ${curVer}`;
 
     const studioTitle = document.getElementById('studio-top-title-text');
     if (studioTitle) studioTitle.textContent = isShiro ? 'ホウ博士の研究観察日誌' : 'クロの思い出絵日記アルバム';
@@ -2066,7 +2068,9 @@ const AppCore = {
           ? `今日も助手と一緒に充実した研究活動を行えたホ！`
           : `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
         const comment = isShiro ? "助手を信頼しているホ！" : "おやびん大好きニャ！";
-        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoPool[0]?.base64 || null, 0, comment);
+        // ★修正：写真がない日はnullを渡し、無関係な写真が登録されるのを防止
+        const photoToSave = (photoPool && photoPool.length > 0) ? photoPool[0].base64 : null;
+        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoToSave, 0, comment);
         this._renderStudioDiaryPage();
         this._updateStorageMonitorUI();
       });
