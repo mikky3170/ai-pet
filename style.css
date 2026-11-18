@@ -1,7 +1,8 @@
-/* [v1.0.0 作業版 Rev.8] index.htmlから外出し分離・新・4大カラーテーマ＆ベクター装飾・アニメーション完全定義 */
+/* [v1.1.2 作業版 Rev.1] 上部ヘッダーUI刷新・ステータスカラー完全定義・四隅完全純白化・日記帳レイアウト最適化・スケッチカードスタイル */
 
 /* ==========================================================================
    新・4大カラーテーマ完全定義 ＆ 端末外観（ライト=白 / ダーク=黒）自動追従
+   - 四隅の外側を「完全な純白（#ffffff）」にするため、外向きのぼかし影を完全撤廃
    ========================================================================== */
 :root {
   --system-outer-bg: #ffffff;
@@ -26,8 +27,7 @@
   --roof-glow: 
     inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
     inset 0 0 16px rgba(244, 114, 182, 0.6),
-    inset 0 0 0 3px rgba(244, 114, 182, 0.85),
-    0 10px 32px rgba(244, 114, 182, 0.3);
+    inset 0 0 0 3px rgba(244, 114, 182, 0.85);
   --stage-rug: radial-gradient(ellipse at center, rgba(244, 114, 182, 0.35) 0%, rgba(255, 228, 230, 0) 72%);
   --theme-modal-border: #f472b6;
   --theme-modal-header-bg: #fdf2f8;
@@ -47,8 +47,7 @@
   --roof-glow: 
     inset 0 2px 0 0 rgba(255, 255, 255, 0.25),
     inset 0 0 16px rgba(56, 189, 248, 0.6),
-    inset 0 0 0 2.5px rgba(56, 189, 248, 0.8),
-    0 8px 30px rgba(0, 0, 0, 0.85);
+    inset 0 0 0 2.5px rgba(56, 189, 248, 0.8);
   --stage-rug: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.28) 0%, rgba(11, 17, 32, 0) 72%);
   --theme-modal-border: #38bdf8;
   --theme-modal-header-bg: #0f172a;
@@ -68,8 +67,7 @@
   --roof-glow: 
     inset 0 3px 0 0 rgba(255, 255, 255, 0.95),
     inset 0 0 16px rgba(16, 185, 129, 0.6),
-    inset 0 0 0 3px rgba(5, 150, 105, 0.85),
-    0 10px 30px rgba(5, 150, 105, 0.28);
+    inset 0 0 0 3px rgba(5, 150, 105, 0.85);
   --stage-rug: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.35) 0%, rgba(209, 250, 229, 0) 72%);
   --theme-modal-border: #059669;
   --theme-modal-header-bg: #ecfdf5;
@@ -89,8 +87,7 @@
   --roof-glow: 
     inset 0 3px 0 0 rgba(255, 255, 255, 0.98),
     inset 0 0 18px rgba(249, 115, 22, 0.65),
-    inset 0 0 0 3px rgba(234, 88, 12, 0.9),
-    0 12px 34px rgba(234, 88, 12, 0.32);
+    inset 0 0 0 3px rgba(234, 88, 12, 0.9);
   --stage-rug: radial-gradient(ellipse at center, rgba(249, 115, 22, 0.4) 0%, rgba(255, 237, 213, 0) 72%);
   --theme-modal-border: #ea580c;
   --theme-modal-header-bg: #fff7ed;
@@ -111,13 +108,13 @@
   box-shadow: none !important;
 }
 
-body {
+html, body {
   margin: 0;
   padding: 0;
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
-  background: var(--system-outer-bg);
+  background-color: var(--system-outer-bg) !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
   position: relative;
   display: flex;
@@ -191,6 +188,9 @@ body {
   flex-shrink: 0;
 }
 
+/* ==========================================================================
+   上部ヘッダー ＆ ステータスバッジ（マイク状態グリーン可視化）
+   ========================================================================== */
 .top-header {
   width: 100%;
   flex-shrink: 0;
@@ -199,7 +199,7 @@ body {
   justify-content: space-between;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
-  padding: 5px 8px;
+  padding: 5px 10px;
   border-radius: 24px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(241, 245, 249, 0.85);
@@ -209,17 +209,16 @@ body {
   z-index: 20;
   margin-top: 1px;
   margin-bottom: 4px;
-  gap: 5px;
+  gap: 8px;
 }
-.top-header-left { display: flex; align-items: center; flex-shrink: 0; gap: 6px; padding-left: 2px; }
-.top-header-right { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding-right: 2px; }
+.top-header-left { display: flex; align-items: center; flex-shrink: 0; min-width: 88px; }
+.top-header-right { display: flex; align-items: center; flex-shrink: 0; }
 
 .header-weather-clock-box {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 1.5px;
-  min-width: 90px;
   line-height: 1.15;
 }
 .hwc-row-datetime {
@@ -250,7 +249,7 @@ body {
 }
 .hwc-location-badge {
   display: inline-block;
-  max-width: 60px;
+  max-width: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -262,69 +261,94 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0 3px;
   min-width: 0;
+  padding: 0 4px;
 }
 
+/* 基本ステータスバッジ */
 #status-text {
   width: 100%;
-  max-width: 100%;
+  max-width: 190px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f172a;
-  color: #38bdf8;
   font-size: 11.5px;
   font-weight: 900;
-  padding: 5px 8px;
+  padding: 5px 10px;
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: all 0.25s ease-out;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  background: #0f172a;
+  color: #38bdf8;
 }
-#status-text.is-hearing {
-  background: #0284c7 !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.8), 0 0 0 1.5px #bae6fd inset !important;
-  animation: hearingPulse 0.8s ease-in-out infinite alternate;
-}
-@keyframes hearingPulse {
-  0% { transform: scale(1); filter: brightness(1); }
-  100% { transform: scale(1.02); filter: brightness(1.2); }
-}
-.is-paused-mode #status-text { background: #450a0a !important; color: #fca5a5 !important; }
 
+/* ★ 1. マイク待機中（オン）：鮮やかエメラルドグリーン ＆ 呼吸パルス発光 */
+#status-text.status-hearing {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+  border: 1.5px solid #34d399 !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.65), 0 0 0 1px #a7f3d0 inset !important;
+  animation: hearingGreenPulse 1.4s ease-in-out infinite alternate;
+}
+@keyframes hearingGreenPulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  100% { transform: scale(1.03); filter: brightness(1.15); box-shadow: 0 0 20px rgba(16, 185, 129, 0.85), 0 0 0 1.5px #ffffff inset !important; }
+}
+
+/* 2. ペットお話し中：スカイブルー */
+#status-text.status-speaking {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  color: #ffffff !important;
+  border: 1.5px solid #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.5) !important;
+  animation: none !important;
+}
+
+/* 3. AI思考中・写真分析中：アンバーオレンジ */
+#status-text.status-thinking {
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%) !important;
+  color: #ffffff !important;
+  border: 1.5px solid #fdba74 !important;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.5) !important;
+  animation: thinkingAmberPulse 1.0s ease-in-out infinite alternate;
+}
+@keyframes thinkingAmberPulse {
+  0% { transform: scale(1); opacity: 0.95; }
+  100% { transform: scale(1.02); opacity: 1; }
+}
+
+/* 4. お休み中（マイク停止）：シックグレー */
+#status-text.status-sleeping,
+.is-paused-mode #status-text {
+  background: #334155 !important;
+  color: #94a3b8 !important;
+  border: 1.5px solid #475569 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+/* 右端の日記帳ボタン（押しやすい特等席デザイン） */
 .btn-top-diary {
-  background: #fdf2f8;
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
   color: #db2777;
-  border: 1.2px solid #f472b6;
-  border-radius: 12px;
-  padding: 4px 7px;
-  font-size: 10.5px;
+  border: 1.5px solid #f472b6;
+  border-radius: 14px;
+  padding: 5px 10px;
+  font-size: 11px;
   font-weight: 900;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 2px;
-  transition: all 0.15s;
+  gap: 3px;
+  box-shadow: 0 2px 6px rgba(244, 114, 182, 0.2);
+  transition: all 0.15s ease-out;
   white-space: nowrap;
-  flex-shrink: 0;
 }
-.btn-top-diary:active { transform: scale(0.93); background: #fce7f3; }
-
-.model-badge {
-  padding: 4px 6px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 800;
-  transition: all 0.3s;
-  white-space: nowrap;
-  margin-right: 0;
-}
-.model-badge.lite { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+.btn-top-diary:active { transform: scale(0.92); background: #fbcfe8; }
 
 #chat-timeline {
   flex: 1;
@@ -992,31 +1016,15 @@ body {
 }
 
 /* ★ アニメモード限定：モード連動装飾（メガネ・帽子）の厳格制御 */
-/* 1. クロちゃん（アニメモード）：なかよし時は完全素顔、おてつだい時のみメガネ＋帽子 */
-.is-char-kuro:not(.is-assistant-mode) #cat-vector-accessories {
-  display: none !important;
-}
-.is-char-kuro.is-assistant-mode #cat-vector-accessories {
-  display: block !important;
-}
+.is-char-kuro:not(.is-assistant-mode) #cat-vector-accessories { display: none !important; }
+.is-char-kuro.is-assistant-mode #cat-vector-accessories { display: block !important; }
 .is-char-kuro.is-assistant-mode #vec-acc-glasses,
-.is-char-kuro.is-assistant-mode #vec-acc-hat {
-  display: block !important;
-}
+.is-char-kuro.is-assistant-mode #vec-acc-hat { display: block !important; }
 
-/* 2. シロくん（アニメモード）：なかよし時はメガネのみ常時着用、おてつだい時のみ帽子追加 */
-.is-char-shiro #cat-vector-accessories {
-  display: block !important;
-}
-.is-char-shiro #vec-acc-glasses {
-  display: block !important; /* メガネは常時装備 */
-}
-.is-char-shiro:not(.is-assistant-mode) #vec-acc-hat {
-  display: none !important; /* なかよし時は帽子なし */
-}
-.is-char-shiro.is-assistant-mode #vec-acc-hat {
-  display: block !important; /* おてつだい時は帽子着用 */
-}
+.is-char-shiro #cat-vector-accessories { display: block !important; }
+.is-char-shiro #vec-acc-glasses { display: block !important; }
+.is-char-shiro:not(.is-assistant-mode) #vec-acc-hat { display: none !important; }
+.is-char-shiro.is-assistant-mode #vec-acc-hat { display: block !important; }
 
 /* シロくん専用：大喜び（Happy）時の「両翼パタパタ羽ばたき」アニメーション */
 .pose-happy-active .anim-happy-wings {
@@ -1296,7 +1304,7 @@ body {
   .top-header {
     margin-top: 0;
     margin-bottom: 4px;
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 16px;
   }
   #chat-timeline {
@@ -1924,6 +1932,9 @@ body {
   font-weight: 700;
 }
 
+/* ==========================================================================
+   絵日記アルバム（BookStudio）＆ 写真なし日スケッチカード
+   ========================================================================== */
 #book-studio-modal {
   position: fixed;
   inset: 0;
@@ -1983,32 +1994,35 @@ body {
   min-height: 0;
 }
 
+/* ページシート（画面内でスクロールせず1画面に収まるよう最適化） */
 .book-page-sheet {
   flex: 1;
+  height: 100%;
   background: #ffffff;
   border: 2px solid #fed7aa;
   border-radius: 20px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   box-shadow: 0 4px 16px rgba(234, 88, 12, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   position: relative;
   min-height: 0;
 }
+
 .book-page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1.5px dashed #fed7aa;
-  padding-bottom: 6px;
-  margin-top: 2px;
+  padding-bottom: 5px;
+  margin-top: 1px;
   flex-wrap: wrap;
   gap: 6px;
   flex-shrink: 0;
 }
 .book-date-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 900;
   color: #9a3412;
 }
@@ -2049,9 +2063,10 @@ body {
   font-weight: 800;
 }
 
+/* 2分割写真コンテナ */
 .diary-photo-duo-container {
   width: 100%;
-  height: 146px;
+  height: 135px;
   display: flex;
   gap: 10px;
   flex-shrink: 0;
@@ -2124,7 +2139,7 @@ body {
   display: grid;
   grid-template-rows: repeat(2, 1fr);
   grid-auto-flow: column;
-  grid-auto-columns: 56px;
+  grid-auto-columns: 52px;
   gap: 5px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -2136,8 +2151,8 @@ body {
 .duo-right-grid-horizontal::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 4px; }
 
 .snap-grid-item {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 8px;
   border: 1.5px solid #fed7aa;
   overflow: hidden;
@@ -2178,38 +2193,111 @@ body {
 }
 .btn-snap-del:hover { background: #ef4444; }
 
+/* ★ 写真なし日の「手描きスケッチ風イラストカード」（アイディア2） */
+.diary-sketch-duo-container {
+  width: 100%;
+  height: 120px;
+  background: linear-gradient(135deg, #fffdf8 0%, #fff7ed 100%);
+  border: 2px dashed #fed7aa;
+  border-radius: 16px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: inset 0 2px 6px rgba(254, 215, 170, 0.25);
+}
+.sketch-art-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.sketch-icon-stamp {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 6px rgba(234, 88, 12, 0.2));
+  flex-shrink: 0;
+  animation: stampFloat 3.2s ease-in-out infinite alternate;
+}
+@keyframes stampFloat {
+  0% { transform: translateY(0) rotate(-2deg); }
+  100% { transform: translateY(-4px) rotate(3deg); }
+}
+.sketch-text-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.sketch-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: #c2410c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sketch-subtitle {
+  font-size: 10.5px;
+  color: #ea580c;
+  line-height: 1.4;
+  word-break: break-all;
+  font-weight: 700;
+}
+.btn-sketch-add-photo {
+  background: #ffffff;
+  border: 1.5px solid #f97316;
+  color: #c2410c;
+  border-radius: 12px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15);
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.btn-sketch-add-photo:active { transform: scale(0.94); background: #ffedd5; }
+
+/* 日記本文エリア（flexで美しく伸長） */
 .book-content-box {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 110px;
+  min-height: 70px;
 }
 .book-diary-textarea {
   flex: 1;
   width: 100%;
-  padding: 10px;
+  padding: 8px 10px;
   border: 1.5px solid #fed7aa;
   border-radius: 12px;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12.5px;
+  line-height: 1.55;
   color: #334155;
   font-family: inherit;
   resize: none;
   outline: none;
   background: #ffffff;
-  min-height: 80px;
+  min-height: 60px;
 }
 .book-diary-textarea:focus { border-color: #f97316; }
 
+/* ひとことボックス（スクロールせず必ず1画面に美しく収まる） */
 .studio-diary-comment-box {
   background: #fdf2f8;
   border: 1.5px solid #fbcfe8;
   border-radius: 12px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   flex-shrink: 0;
 }
 .studio-diary-comment-label {
@@ -2224,9 +2312,9 @@ body {
   width: 100%;
   border: 1px solid #fbcfe8;
   border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 12px;
-  line-height: 1.4;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  line-height: 1.35;
   color: #9d174d;
   font-family: inherit;
   resize: none;
