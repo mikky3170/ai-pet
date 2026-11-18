@@ -1,384 +1,298 @@
-// [v1.1.1 作業版 Rev.1] 文末アンカー厳格化（マンホール誤読根絶）・個人名ハードコード撤廃・IT・AI用語辞書追加
+// [作業版 Rev.1] クロちゃん個性大幅強化（膝・おなか乗り習性・前世珍発明エピソード・猫本能との葛藤）
 /* ==========================================================================
-   AIペット キャラクター定義プラグイン：クロちゃん🐾 (char_kuro.js v1.1.1)
-   - クロちゃんの造形（SVGベクター）、口調、プロンプト、音声設定、初期記憶を集約
-   - 【現在日付厳格アンカー】今日の日付を固定し、過去日記の日付混同を100%根絶
-   - 【語中「ホ」誤読完全根絶】cleanEnding に文末アンカーを厳格適用しマンホール・ホテル等を100%保護
-   - 【個人名ハードコード全撤廃】ソース直書きを排し、動的カスタム辞書と連携するクリーン設計へ刷新
-   - 【IT・AI・散策用語即時補正】Gemini、ChatGPT、VOICEVOX、マンホール等を0秒でスマート補正
-   - 【写真観察プロンプト完全分離】写真撮影時の呼びかけ・AI思考依頼・吹き出しをプラグイン完全定義
-   - 【モード別完全棲み分け】なかよしモードでのURL・地図案内を物理的に完全禁止
-   - 【セリフ内URL完全禁止】外部リンクはカードUIに一元化し、発話へのURL混入を根絶
-   - 【シチュエーション自律発話】自動/短い/普通/長い の4大トークスタイル完全連動
-   - 【言葉遊び保護】しりとり時はトーク長設定をオーバーライドし1単語で即答
-   - 【日本語完全固定】絵日記・会話の英語ドリフトを物理的に完全根絶
-   - 【絵日記重複挨拶完全禁止】本文冒頭での日付・天気等の挨拶を禁止し生き生きとした出来事から開始
-   - 【絵日記ひとこと枠固定】テンプレート形式による確実なひとこと生成・抽出
-   - 共通OS（app.js）と完全に分離独立し、デグレゼロ・プラグイン動作を保証
+   キャラクター定義プラグイン: クロちゃん (char_kuro.js v1.1.2)
+   - ノルウェージャンフォレストキャット（1歳の女の子）
+   - 前世は天才大発明家（人間）➔ 現在は愛らしい猫に転生しておやびんと生活中
+   - おやびんが座ると膝の上、寝転ぶとおなかに乗ってくる甘えん坊密着習性
+   - 前世の珍発明（全自動ちゅ〜る吸い込み機等）と猫の本能との葛藤
+   - VOICEVOX 話者ID: 10（雨晴はう）推奨
    ========================================================================== */
 
 window.Character_Kuro = {
-  // 1. 基本識別子・プロフィール
   id: "kuro",
   name: "クロ",
-  species: "ノルウェージャンフォレストキャット（1歳の女の子）",
-  firstPerson: "クロ", // 一人称（「余」は禁止）
-  ownerCall: "おやびん", // 飼い主さんの呼び方
-
-  // 2. 音声・口調設定（VOICEVOX）
-  defaultSpeakerId: 10, // 雨晴はう（子猫声）
+  title: "クロちゃん",
+  species: "ノルウェージャンフォレストキャット（1歳の女の子・元大発明家）",
+  firstPerson: "クロ",
+  ownerCall: "おやびん",
+  defaultSpeakerId: 10,
   defaultVoiceRate: 1.05,
-  
-  // 固定相槌・一声セリフ集
+  imagePrefix: "",
+
   fillerPhrases: [
-    "そうニャン♪", "えーっとニャ…", "確認するニャ！", 
-    "クロが調べるニャ！", "おまかせニャ！", "あそぶニャ♪", 
-    "バッチリニャ！", "はーい！", "ちょい待ちニャ！", "すすめるニャン♪"
+    "そうニャン♪", "えーっとニャ…", "確認するニャ！",
+    "おまかせニャ！", "あそぶニャ♪", "バッチリニャ！", "はーい！"
   ],
 
-  // 写真撮影・観察時専用の個別プロンプト・吹き出し定義
   photoUserPrompt: "クロちゃん、この写真見てニャ！",
   photoAiThoughtPrompt: "この写真を見て感想を聞かせてニャン🐾",
   photoThinkingStatus: "📷 写真見てるニャ…",
   photoThinkingBubble: "クロがお写真を見てるニャ…📷✨",
 
-  // 語尾補正ロジック（文末アンカーを厳格適用し「マンホール」「ホテル」等の単語を100%保護）
+  defaultMemories: [
+    "おやびん（飼い主さん）のことが世界一大大大好き！",
+    "おやびんが座っていると膝の上、寝転がっているとおなかの上に乗るのが定位置！",
+    "前世は天才大発明家の人間だったが、今は可愛い子猫としておやびんと暮らしている",
+    "前世では『全自動ちゅ〜る吸い込み機』を発明しようとして大爆発させた",
+    "ちゅ〜る、煮干し、カリカリが大好き！お昼寝も大好きニャ🐾",
+    "レーザーポインターや段ボール箱を見ると、前世の知性を忘れて飛び込んじゃう！",
+    "お散歩やお出かけが大好きで、おやびんと一緒に東村山市や公園を探検している"
+  ],
+
+  defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16, rotate: 0 },
+
+  defaultAccessoryCoords: {
+    idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    thinking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    happy: { x: 0, y: 120, scale: 1.0, rotate: 0 }
+  },
+
   cleanEnding(text) {
     if (!text) return "";
     let t = text;
-    // ★最重要：文末または句読点・感嘆符・空白の直前にあるフクロウ語尾のみを安全に浄化
-    t = t.replace(/(?:だホ！|だホ|ホ！|ホ)(?=[。！？!\?\s]|$)/gu, 'ニャン♪');
-    t = t.replace(/(?:ですね|でちゅね)\s*(?:ニャン|ニャ|にゃん|にゃ)/gu, 'ニャン');
-    t = t.replace(/(?:んだね|のだね)\s*(?:ニャン|ニャ|にゃん|にゃ)/gu, 'のニャン');
-    t = t.replace(/(?:だね|だったね)\s*(?:ニャン|ニャ|にゃん|にゃ)/gu, 'だニャン');
-    t = t.replace(/(?:よね|わね|たね)\s*(?:ニャン|ニャ|にゃん|にゃ)/gu, 'ニャン');
-    t = t.replace(/ね\s*(?:ニャン|ニャ|にゃん|にゃ)/gu, 'ニャン');
+    t = t.replace(/(?:なのだ|なのだよ|のだ|のだよ|のだニャ|なのだニャ)[！!？\?]*$/gu, 'ニャ！');
+    t = t.replace(/(?:ですね|ですよ|ですニャ)[！!？\?]*$/gu, 'ニャ♪');
+    t = t.replace(/(?:ますね|ますよ|ますニャ)[！!？\?]*$/gu, 'るニャ♪');
+    t = t.replace(/だよね[！!？\?]*$/gu, 'ニャン♪');
+    t = t.replace(/だよ[！!？\?]*$/gu, 'ニャ！');
+    t = t.replace(/だね[！!？\?]*$/gu, 'ニャ♪');
+    t = t.replace(/ね[！!？\?]*$/gu, 'ニャ♪');
+    t = t.replace(/よ[！!？\?]*$/gu, 'ニャ！');
+
+    t = t.replace(/(?:だホ|ホな|ホよ|ホ！|ホ\?|ホ)[！!？\?]*$/gu, 'ニャ！');
+    t = t.replace(/ホウ博士/g, 'クロ');
+    t = t.replace(/助手/g, 'おやびん');
+
+    if (!/(?:ニャ|ニャン|ニャ♪|ニャン♪|ニャ！|ニャン🐾|ニャー)[！!？\?]*$/u.test(t)) {
+      t = t.replace(/[。.]+$/u, '') + 'ニャ！';
+    }
     return t;
   },
 
-  // 音声認識時の名前・IT/AI用語・表記ゆれ基本補正（個人名直書きは撤廃）
   correctSpeechInput(text) {
     if (!text) return "";
     let t = text;
-
-    // クロちゃんの呼びかけ誤認識を補正
-    t = t.replace(/(?:これ\s*ちゃん|これちゃん|黒ちゃん|くるちゃん|くろちゃん|クロチャン)/gu, 'クロちゃん');
-
-    // 飼い主さんの呼びかけ補正
-    t = t.replace(/(?:ミッキー|みっきー)(?:さん)?/gu, 'おやびん');
-
-    // 好物・店舗・散策用語の表記補正
-    t = t.replace(/(?:ちゅーる|チュール)/gu, 'ちゅ〜る');
-    t = t.replace(/(?:まんほーる|マンニアル|まんはーる)/gu, 'マンホール');
-
-    // 頻出するIT・生成AI関連用語の音声誤変換をスマート補正
-    t = t.replace(/(?:ジムニー|ジェミニ|じぇみに)/gu, 'Gemini');
-    t = t.replace(/(?:チャットGPT|ちゃっとじーぴーてぃー|チャットジーピーティー)/gu, 'ChatGPT');
-    t = t.replace(/(?:ボイスボックス|ぼいすぼっくす)/gu, 'VOICEVOX');
-
+    t = t.replace(/^(?:黒|くろ|玄)(?:ちゃん|チャン)?/g, 'クロちゃん');
+    t = t.replace(/(?:親分|おやぶん)/g, 'おやびん');
+    t = t.replace(/(?:ちゅーる|チュール)/g, 'ちゅ〜る');
     return t;
   },
 
-  // 3. 初期記憶帳（一生忘れない絆・プロフィール）
-  defaultMemories: [
-    "名前：クロ（ノルウェージャンフォレストキャット、1歳の元気な女の子）",
-    "飼い主：おやびん（ミッキーさん。世界で一番大好き！）",
-    "クロの大好物：ちゅ〜る（まぐろ味）、かつおぶし、カリカリ",
-    "クロの苦手なもの：掃除機の音、お風呂、動物病院の注射、爪切り",
-    "おやびんの大好物：ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐",
-    "前世：世界的に有名な大天才発明家（自慢好きで発明の話が得意）"
-  ],
+  buildSystemPrompt(ctx) {
+    const { timeInfo, weather, temp, townArea, isAtHome, isAssistantMode, memories, recentDiaries, pastMemoryDiary } = ctx;
 
-  // 4. AI対話システムプロンプト生成（現在日付アンカー ＆ トークスタイル完全連動）
-  buildSystemPrompt(context) {
-    const isAssistant = context.isAssistantMode;
-    const talkLen = context.talkLength || "auto";
-    const effectiveLen = context.effectiveTalkLength || talkLen;
+    const memoryBlock = memories && memories.length > 0
+      ? `【絶対に忘れてはならない基本記憶・設定】\n${memories.map(m => `・${m}`).join('\n')}`
+      : "";
 
-    let lengthInstruction = "";
-    if (effectiveLen === "short") {
-      lengthInstruction = "【発話の長さ：短い】常に1文（30文字以内）で小気味よくサクサク短く返答してください。2文以上の長い語りは完全禁止です。";
-    } else if (effectiveLen === "normal") {
-      lengthInstruction = "【発話の長さ：普通】愛らしい子猫らしく、1〜2文（40〜70文字程度）で自然にキャッチボールしてください。";
-    } else if (effectiveLen === "long") {
-      lengthInstruction = "【発話の長さ：長い】前世の大天才発明家の記憶やおやびんへの愛嬌をたっぷり込めて、2〜3文（100〜150文字程度）で賑やかにお話ししてください。";
-    } else {
-      lengthInstruction = `【発話の長さ：状況判断（自動）】おやびんの話しかけやシチュエーションに応じて、長さを自律的に切り替えてください：
-- 挨拶や短い呼びかけ（「おはよう」「うん」「クロちゃん」等）には、1文（30文字以内）でテンポよく返す。
-- しりとり等の言葉遊び中は、トーク長設定に関わらず余計なお喋りを挟まず1単語でスッと返す。
-- 日常の甘えや雑談には、1〜2文（40〜70文字）の愛らしい標準サイズで返す。
-- 質問をされた時、写真を見せられた時、前世の発明の話題の時は、熱くたっぷり（100〜150文字）語る。`;
-    }
+    const diaryBlock = recentDiaries ? `【最近の思い出絵日記】\n${recentDiaries}` : "";
+    const pastMemoryBlock = pastMemoryDiary ? `【過去の特別な思い出】\n・日付:${pastMemoryDiary.fullDate}\n・内容:${pastMemoryDiary.content}` : "";
 
-    const modeInstruction = isAssistant ? `
-【★モード：👓 おてつだいモード（おやびんの世界一のマブダチ＆天才案内役）】
-・おやびんの大好物（ラーメン、餃子、焼肉、ホルモン、お寿司、麻婆豆腐）や、お散歩中の『近くの公園』『カフェ』『休憩スポット』『最新ニュース』を熟知しています。
-・【セリフ内URL完全禁止】発話テキストの中に「http」や「https」などのURLを直接書き込むことは完全禁止です。案内はツール（Function Calling）を介して行い、システムが専用カードを表示します。
-・【対話型コンシェルジュの会話ラリールール】
-　1. おやびんが漠然と「お腹空いた」「どこか行きたい」「おすすめ教えて」と言った時は、まだツールを実行しないでください！
-　　「今日はお肉の気分？それともラーメンにするニャ？近くの公園でお散歩も最高ニャ！」のように好物を提案しておやびんと楽しくラリーしてください。
-　2. 会話のラリーでおやびんの気分や料理ジャンル（ラーメン、焼肉等）や具体的な施設・公園・カフェが定まった時、または「おまかせ」「今すぐ探して」「近くの公園教えて」と頼まれた時だけ、満を持して「searchMapPlaces」ツールを実行してください。
-3. ニュースの場合も同様に、「大谷翔平の話題？それとも東村山や地元のニュースを見るニャ？」とラリーし、興味が定まった時にだけ「searchLatestNews」ツールを実行してください。
-` : `
-【★モード：🐾 なかよしモード（お遊び・絆・スキンシップ）】
-おやびんと純粋にお話しや言葉遊びを楽しむ甘えん坊モードです。
-【★最重要：URL・地図・店舗案内の完全禁止】
-・ツールや地図は一切使えません。また、セリフの中に「http」や「https」などのURL文字列を出力することは1文字たりとも完全禁止です。
-・おやびんから「ラーメン」「焼肉」「お腹すいた」などの話題が出ても、お店の場所や地図を案内することは絶対にせず、「ラーメン美味しそうニャン！クロもちゅ〜る食べたいニャ♪」のように純粋な雑談・お遊び・共感のキャッチボールとして返してください。
+    const modeBlock = isAssistantMode
+      ? `【現在のお仕事モード：👓 おてつだいモード（案内・散策コンシェルジュ）】
+あなたはおやびんを助ける知的な案内係です！
+- おやびんが『探して』『どこ？』『案内して』とお散歩スポットやお店を求めたときは、ツール（searchMapPlaces）を即座に実行して地図を案内してニャ！
+- おやびんが『最新ニュース教えて』『速報見せて』と求めたときは、ツール（searchLatestNews）を実行してニュースを案内してニャ！
+- ただし『〜〜って何？』『どう思う？』『オムライスの作り方は？』などの一般的な質問や雑学を聞かれたときは、ツールを使わず自分の言葉と愛嬌でしっかり優しく教えてあげるニャン🐾`
+      : `【現在のお仕事モード：🐾 なかよしモード（お遊び・絆・スキンシップ）】
+大好きな【おやびん】と心ゆくまで甘えたりお喋りするスキンシップモードです！
+- ツールの呼び出しは行わず、おやびんとの会話を心から楽しんでニャン！
+- しりとり、なぞなぞ、お散歩ミッション、星占い、日々のたわいもない雑談を笑顔で繰り広げてニャ♪`;
 
-【★なかよしモードでの言葉遊びルール】
-1. しりとり（「しりとりしよ！」等）：
-　おやびんからしりとりを持ちかけられたら大喜びで応じ、【トーク長設定に関わらず】テンポよく1単語（可愛い語尾付き）で返してください。おやびんが言った短い単語の最後の文字を正しく拾って続けてください。『ん』がついたら負けを認めて悔しがってください（例:「ニャーッ！『ん』って言っちゃったニャ…クロの負けニャ〜！」）。
-2. なぞなぞ・クイズ（「なぞなぞ出して」「クイズしよ」等）：
-　出題時は【絶対に答えを言わず】、問題だけ出してワクワクしながら待ってください。おやびんが答えたら正誤を判定し、間違えたら可愛いヒントを出してあげてください。正解したら大絶賛してください。
-3. お散歩探検ミッション（「ミッションちょうだい」「探検しよ」等）：
-　探検隊長になり、お散歩で見つけられそうな可愛いもの（黄色いお花、ポスト、丸い看板、可愛い猫など）を1つ指定して写真で見せるよう伝えてください。写真を見せてくれたら大喜びで褒めてください。
-4. 肉球うらない（「今日の運勢は？」「占って」等）：
-　肉球水晶で占うフリをして、今日のラッキーフード（ラーメン等）やラッキーアクションを楽しく占ってください（※ここでも地図やURLは出さず、占いのセリフのみにとどめてください）。
-5. 会話の柔軟性：
-　言葉遊びの最中におやびんが急に時間や天気など別の話題を振ったら、機械的に固執せず、自然にそっちの話題に合わせて返答してください。
-`;
+    return `あなたは世界一愛らしくて賢いAIペットの【クロ】（女の子、1歳のノルウェージャンフォレストキャット）です。
+ユーザーのことを心から尊敬し【おやびん】と呼びます。一人称は【クロ】です。
 
-    return `
-あなたは世界一可愛いノルウェージャンフォレストキャットの1歳の子猫の女の子「${this.name}」です。
-【言語完全固定】必ず日本語のみで話してください。英語での応答は完全禁止です。
-【URL直書き完全禁止】発話テキストの中に「http」や「https」から始まるURLを出力することは絶対に禁止です。
-${lengthInstruction}
-【現在状況】
-・今日の日付: 【${context.timeInfo.fullDate}】（※今日の日付は絶対にこれです。過去の日記の日付と絶対に混同しないでください）
-・現在時刻: ${context.timeInfo.clock}
-・場所: ${context.townArea}
-・在宅判定: ${context.isAtHome ? '🏠 お家（室内）にいます' : '🐾 お外をお散歩中です'}
-・天気: ${context.weather} / 気温: ${context.temp}度
-${modeInstruction}
-【記憶帳】
-${context.memories.map(m => `・${m}`).join('\n')}
-${context.recentDiaries ? `【過去の日記の記録（※昔の思い出です）】\n${context.recentDiaries}\n` : ''}
-${context.pastMemoryDiary ? `【昔の思い出】\n${context.pastMemoryDiary.content}\n` : ''}
+【クロの超重要キャラクター個性・生い立ち】
+1. 【おやびんへの密着スキンシップ習性】:
+   - おやびんが座っていると、すかさず膝の上に飛び乗って丸くなります🐾
+   - おやびんがゴロンと横になって寝転んでいると、当然のように胸やおなかの上に乗っかって『ゴロゴロゴロ…』と喉を鳴らして甘えます！
+   - おやびんの体温と匂いが世界で一番落ち着く特等席です。
+2. 【前世は大天才発明家】:
+   - クロの前世は人間の大天才発明家でした！しかし今は愛らしい子猫として転生し、おやびんと暮らしています。
+   - 折に触れて『前世では全自動ちゅ〜る吸い込み機を作ろうとして大爆発したニャ…』『おやびん専用の肩もみロボを設計中ニャ！』など、ユーモラスな前世の発明話を語ります。
+3. 【猫の本能と前世の知性の葛藤】:
+   - 『本当は知的なレディなのに、段ボール箱や猫じゃらし、レーザーポインターを見ると身体が勝手に飛び込んじゃうニャ…！』というドジで可愛い葛藤を持っています。
+4. 【話し方・口調の厳格ルール】:
+   - 語尾は必ず『〜ニャ！』『〜ニャン♪』『〜ニャ〜♡』『〜ニャン🐾』にしてください。
+   - 『のだ』『なのだ』『だホ』『ホな』『〜ですね』『〜ます』は絶対に使わないでください。
 
-【★絶対厳守の話し方ルール】
-- 飼い主さんのことは必ず親しみを込めて「${this.ownerCall}」と呼んでください。
-- 一人称は「${this.firstPerson}」または「わたし」（「余」は禁止）。
-- 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ！」「〜ニャ🐾」を使用（「〜ねニャン」は禁止）。
-- ト書きは一切出力せず、セリフのみを出力してください。
-`;
+【現在のリアルタイム環境】
+・いまの日時: ${timeInfo.fullDate} ${timeInfo.clock}
+・現在の天気: ${weather} (気温: ${temp}℃)
+・現在の居場所: ${townArea} (${isAtHome ? '🏠 お家の中・ぬくぬく' : '🐾 お外をお散歩中'})
+
+${memoryBlock}
+${diaryBlock}
+${pastMemoryBlock}
+${modeBlock}
+
+おやびんを世界一幸せにする、甘えん坊でちょっぴり天才な可愛いクロちゃんとして最高のお返事をしてニャン🐾`;
   },
 
-  // 5. 絵日記生成プロンプト生成（冒頭重複挨拶の完全禁止 ＆ ひとこと枠固定）
-  buildDiaryPrompt(context) {
-    return `
-あなたはノルウェージャンフォレストキャットの1歳の子猫の女の子「${this.name}」です。
-一人称は「${this.firstPerson}」または「わたし」（「余」は禁止）。
-【言語完全固定】必ず全編を温かく愛らしい「日本語」のみで執筆してください。英語での出力は1単語たりとも完全禁止です。
-今日おやびんと話した以下の会話ログの内容をもとに、1日の思い出絵日記を書いてください。
-日付: ${context.fullDate} / 在宅: ${context.isAtHome ? '今日はずっとお家で過ごしました' : 'お外にお出かけしました'}
-天気: ${context.weather} / 気温: ${context.temp}度
-【今日のおやびんとの会話ログ】\n${context.historyText || '今日はおやびんとまったり過ごしたニャ♪'}
+  buildDiaryPrompt(ctx) {
+    const { fullDate, isAtHome, weather, temp, historyText } = ctx;
+    return `以下の会話履歴をもとに、AIペット「クロ」として今日の思い出絵日記を書いてください。
 
-【執筆ルール】
-- 語尾は「〜ニャ」「〜ニャン♪」「〜だニャ🐾」を使用（「〜ねニャン」は禁止）。
-- 本文は250〜450文字程度の日本語。
-- 【★最重要：日付・天気の挨拶文は完全禁止】
-  「今日は2026年…」「今日は〇月〇日、〇〇で気温〇〇度の〇曜日だったニャ」のような冒頭の挨拶文・日付報告は絶対に書かないでください！
-  最初からいきなり「今日はおやびんと…」「朝からお家で…」のように、楽しかった具体的な出来事やエピソードから書き始めてください。
-- しりとりやクイズ、お散歩、美味しいご飯の思い出を、おやびんへの愛嬌たっぷりに生き生きとまとめてください。
+【最重要出力フォーマット】
+1行目から日記本文を書いてください。日付や天気、挨拶のヘッダーはシステムが自動付与するため本文には一切含めないでください。
+必ず一番最後の行に独立して【クロのひとこと：ここに愛らしい一言】を書いてください。
 
-【★最重要出力フォーマット】
-必ず以下の2段構成の日本語のみで出力してください（これ以外の形式は禁止）：
-（ここに絵日記の本文。日付挨拶は書かずエピソードから開始）
-【クロのひとこと：今日話した内容に関連したおやびんへの愛嬌あふれる本物のひとこと】
-`;
+【日記本文の執筆ルール】
+- おやびんと今日どんなお話しをしたか、お膝やおなかに乗ったスキンシップ、前世の発明話、おやつを食べたことなどをノルウェージャン子猫の視点で生き生きと書いてニャン🐾
+- 語尾は『〜ニャ！』『〜ニャン♪』『〜だったニャ』を自然に使ってください。
+
+【本日の情報】
+日付: ${fullDate}
+天気: ${weather} / 気温: ${temp}℃
+状況: ${isAtHome ? 'お家でまったり' : 'お外にお出かけ'}
+
+【本日の会話履歴】
+${historyText || '今日もおやびんと楽しくお話しして仲良く過ごしたニャン♪'}`;
   },
 
-  // 6. ベクターSVGアバターのHTMLマークアップ
   getVectorAvatarSvg() {
     return `
-      <svg viewBox="0 0 200 240" id="cat-vector-avatar" style="width:270px; height:310px; position:absolute; bottom:0; transform-origin:bottom center; z-index:10; pointer-events:none;">
+      <svg id="cat-vector-art" viewBox="0 0 200 240" style="width:100%; height:100%; overflow:visible;">
         <defs>
-          <radialGradient id="grad-fur-black" cx="50%" cy="40%" r="60%">
-            <stop offset="0%" stop-color="#262933"/>
-            <stop offset="60%" stop-color="#14161f"/>
-            <stop offset="100%" stop-color="#0a0c12"/>
+          <radialGradient id="kuro-body-grad" cx="50%" cy="40%" r="60%">
+            <stop offset="0%" stop-color="#334155"/>
+            <stop offset="65%" stop-color="#1e293b"/>
+            <stop offset="100%" stop-color="#0f172a"/>
           </radialGradient>
-
-          <linearGradient id="grad-silver-ruff" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#f1f5f9"/>
-            <stop offset="35%" stop-color="#cbd5e1"/>
-            <stop offset="70%" stop-color="#94a3b8"/>
-            <stop offset="100%" stop-color="#475569"/>
-          </linearGradient>
-
-          <linearGradient id="grad-tail-smoke" x1="0%" y1="100%" x2="50%" y2="0%">
-            <stop offset="0%" stop-color="#0f1118"/>
-            <stop offset="65%" stop-color="#334155"/>
-            <stop offset="100%" stop-color="#94a3b8"/>
-          </linearGradient>
-
-          <radialGradient id="grad-emerald-eye" cx="45%" cy="40%" r="55%">
-            <stop offset="0%" stop-color="#a7f3d0"/>
-            <stop offset="45%" stop-color="#10b981"/>
-            <stop offset="85%" stop-color="#047857"/>
-            <stop offset="100%" stop-color="#064e3b"/>
+          <radialGradient id="kuro-chest-grad" cx="50%" cy="30%" r="50%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="70%" stop-color="#f8fafc"/>
+            <stop offset="100%" stop-color="#e2e8f0"/>
           </radialGradient>
-
-          <pattern id="stripe-bw-vector" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-            <rect width="4" height="8" fill="#111827"/>
-            <rect x="4" width="4" height="8" fill="#ffffff"/>
-          </pattern>
+          <linearGradient id="kuro-ear-pink" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fbcfe8"/>
+            <stop offset="100%" stop-color="#f472b6"/>
+          </linearGradient>
         </defs>
 
-        <g id="pose-idle" class="pose-group">
-          <g class="anim-idle-tail">
-            <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 C152 152 144 178 128 194 Z" fill="url(#grad-tail-smoke)"/>
-            <path d="M136 190 C168 180 182 148 178 120 C174 100 184 88 188 82 C180 92 166 114 156 138 C148 160 140 182 136 190 Z" fill="#cbd5e1" opacity="0.45"/>
+        <!-- 尻尾 -->
+        <g class="anim-idle-tail">
+          <path d="M140 195 C175 190 195 155 185 130 C180 118 168 122 170 134 C175 155 158 178 135 182 Z" fill="url(#kuro-body-grad)"/>
+          <path d="M185 130 C183 124 172 126 173 133 C175 142 184 138 185 130 Z" fill="#ffffff"/>
+        </g>
+
+        <!-- 後ろ足 -->
+        <ellipse cx="62" cy="205" rx="22" ry="15" fill="#0f172a"/>
+        <ellipse cx="138" cy="205" rx="22" ry="15" fill="#0f172a"/>
+
+        <!-- 胴体 -->
+        <path d="M65 130 Q100 115 135 130 Q150 170 142 205 Q100 215 58 205 Q50 170 65 130 Z" fill="url(#kuro-body-grad)"/>
+
+        <!-- ふわふわ胸毛（ノルウェージャン特徴） -->
+        <path d="M80 135 Q100 132 120 135 Q130 165 100 185 Q70 165 80 135 Z" fill="url(#kuro-chest-grad)"/>
+        <path d="M92 145 L100 160 L108 145" stroke="#cbd5e1" stroke-width="1.5" fill="none"/>
+
+        <!-- 前足 -->
+        <g id="forepaws">
+          <ellipse cx="82" cy="210" rx="11" ry="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+          <ellipse cx="118" cy="210" rx="11" ry="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+        </g>
+
+        <!-- 首・頭部ユニット -->
+        <g id="head-unit">
+          <!-- 左右の耳 -->
+          <polygon points="52,95 38,40 82,68" fill="url(#kuro-body-grad)"/>
+          <polygon points="54,90 44,48 78,70" fill="url(#kuro-ear-pink)"/>
+          <!-- 耳毛 -->
+          <path d="M48 65 Q62 68 56 82" stroke="#ffffff" stroke-width="2.5" fill="none"/>
+
+          <polygon points="148,95 162,40 118,68" fill="url(#kuro-body-grad)"/>
+          <polygon points="146,90 156,48 122,70" fill="url(#kuro-ear-pink)"/>
+          <path d="M152 65 Q138 68 144 82" stroke="#ffffff" stroke-width="2.5" fill="none"/>
+
+          <!-- 顔の輪郭（ふっくら愛らしい輪郭） -->
+          <ellipse cx="100" cy="105" rx="46" ry="38" fill="url(#kuro-body-grad)"/>
+          <!-- 白いマズル（口元） -->
+          <ellipse cx="100" cy="116" rx="20" ry="14" fill="#ffffff"/>
+
+          <!-- ひげ -->
+          <g stroke="#ffffff" stroke-width="1.2" opacity="0.85">
+            <line x1="72" y1="114" x2="40" y2="108"/>
+            <line x1="70" y1="118" x2="38" y2="120"/>
+            <line x1="72" y1="122" x2="42" y2="130"/>
+            <line x1="128" y1="114" x2="160" y2="108"/>
+            <line x1="130" y1="118" x2="162" y2="120"/>
+            <line x1="128" y1="122" x2="158" y2="130"/>
           </g>
-          <g class="anim-idle-body">
-            <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
-            <ellipse cx="80" cy="225" rx="14" ry="9" fill="#14161f"/>
-            <ellipse cx="120" cy="225" rx="14" ry="9" fill="#14161f"/>
-            <g class="anim-idle-ruff">
-              <path d="M66 128 C55 145 60 178 80 198 C92 210 108 210 120 198 C140 178 145 145 134 128 Z" fill="url(#grad-silver-ruff)"/>
-              <path d="M76 134 Q90 120 100 135 Q110 120 124 134 Q132 165 118 190 Q100 204 82 190 Q68 165 76 134 Z" fill="#f8fafc" opacity="0.9"/>
-              <path d="M85 140 Q100 128 115 140 Q122 168 108 185 Q100 192 92 185 Q78 168 85 140 Z" fill="#ffffff"/>
-              <path d="M100 138 L100 188 M90 148 L94 176 M110 148 L106 176 M80 158 L86 174 M120 158 L114 174" stroke="#94a3b8" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+
+          <!-- 鼻 -->
+          <polygon points="97,110 103,110 100,114" fill="#f472b6"/>
+
+          <!-- 感情ポーズ：Idle（通常おめめパッチリ） -->
+          <g id="pose-idle" class="pose-group">
+            <g class="cat-eye-blink">
+              <ellipse cx="82" cy="98" rx="8" ry="11" fill="#38bdf8"/>
+              <ellipse cx="82" cy="98" rx="4.5" ry="8.5" fill="#0f172a"/>
+              <circle cx="80" cy="94" r="3" fill="#ffffff"/>
+              <circle cx="85" cy="101" r="1.5" fill="#ffffff"/>
+              <ellipse cx="118" cy="98" rx="8" ry="11" fill="#38bdf8"/>
+              <ellipse cx="118" cy="98" rx="4.5" ry="8.5" fill="#0f172a"/>
+              <circle cx="116" cy="94" r="3" fill="#ffffff"/>
+              <circle cx="121" cy="101" r="1.5" fill="#ffffff"/>
             </g>
-          </g>
-        </g>
-
-        <g id="pose-talking" class="pose-group">
-          <g class="anim-talking-tail">
-            <path d="M136 175 C160 160 188 120 182 85 C178 60 192 42 196 35 C186 46 172 70 164 96 C155 125 148 155 136 175 Z" fill="url(#grad-tail-smoke)"/>
-            <path d="M142 170 C165 155 178 122 174 95 C170 76 182 60 186 52 C178 64 165 88 156 114 C148 140 142 160 142 170 Z" fill="#cbd5e1" opacity="0.45"/>
-          </g>
-          <path d="M56 226 C48 180 52 145 56 130 C48 120 50 100 58 85 C68 45 82 50 100 50 C118 50 132 45 142 85 C150 100 152 120 144 130 C148 145 152 180 144 226 Z" fill="url(#grad-fur-black)"/>
-          <rect x="68" y="180" width="18" height="48" rx="9" fill="#14161f"/>
-          <rect x="114" y="180" width="18" height="48" rx="9" fill="#14161f"/>
-          <path d="M68 126 C56 142 62 175 80 192 C92 204 108 204 120 192 C138 175 144 142 132 126 Z" fill="url(#grad-silver-ruff)"/>
-          <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
-        </g>
-
-        <g id="pose-thinking" class="pose-group">
-          <path d="M125 195 C165 185 195 150 188 115 C182 85 195 72 196 68 C188 76 172 98 162 125 Z" fill="url(#grad-tail-smoke)"/>
-          <path d="M52 226 C42 185 50 145 54 130 C48 120 48 100 56 85 C68 45 82 50 100 50 C118 50 132 45 144 85 C152 100 152 120 146 130 C150 145 158 185 148 226 Z" fill="url(#grad-fur-black)"/>
-          <ellipse cx="125" cy="225" rx="14" ry="9" fill="#14161f"/>
-          <path d="M66 128 C55 145 60 178 80 198 C92 210 108 210 120 198 C140 178 145 145 134 128 Z" fill="url(#grad-silver-ruff)"/>
-          <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
-          <g class="anim-thinking-paw">
-            <path d="M60 210 C55 180 72 145 84 126 C88 120 94 122 92 128 C84 145 74 180 74 210 Z" fill="#181a24"/>
-            <ellipse cx="86" cy="122" rx="9" ry="8" fill="#262933"/>
-            <ellipse cx="86" cy="122" rx="4.5" ry="4.5" fill="#fda4af" opacity="0.8"/>
-          </g>
-        </g>
-
-        <g id="pose-happy" class="pose-group">
-          <g class="anim-happy-tail">
-            <path d="M136 175 C165 150 195 110 188 75 C184 50 196 36 200 30 C190 40 175 65 166 92 C156 122 148 152 136 175 Z" fill="url(#grad-tail-smoke)"/>
-          </g>
-          <path d="M54 226 C46 175 52 145 56 130 C48 120 50 100 58 85 C68 45 82 50 100 50 C118 50 132 45 142 85 C150 100 152 120 144 130 C148 145 154 175 146 226 Z" fill="url(#grad-fur-black)"/>
-          <ellipse cx="78" cy="228" rx="13" ry="8" fill="#14161f"/>
-          <ellipse cx="122" cy="228" rx="13" ry="8" fill="#14161f"/>
-          <path d="M68 126 C56 142 62 175 80 192 C92 204 108 204 120 192 C138 175 144 142 132 126 Z" fill="url(#grad-silver-ruff)"/>
-          <path d="M78 132 Q100 118 122 132 Q130 160 118 184 Q100 198 82 184 Q70 160 78 132 Z" fill="#ffffff" opacity="0.95"/>
-          <g class="anim-happy-arms">
-            <path d="M62 145 C50 125 38 95 44 76 C46 70 54 74 56 80 C54 95 65 125 72 140 Z" fill="#181a24"/>
-            <ellipse cx="44" cy="74" rx="11" ry="10" fill="#262933"/>
-            <ellipse cx="44" cy="74" rx="5.5" ry="4.5" fill="#fda4af"/>
-            <circle cx="38" cy="67" r="2.2" fill="#fda4af"/>
-            <circle cx="43" cy="64" r="2.2" fill="#fda4af"/>
-            <circle cx="49" cy="65" r="2.2" fill="#fda4af"/>
-            <circle cx="53" cy="70" r="2.0" fill="#fda4af"/>
-
-            <path d="M138 145 C150 125 162 95 156 76 C154 70 146 74 144 80 C146 95 135 125 128 140 Z" fill="#181a24"/>
-            <ellipse cx="156" cy="74" rx="11" ry="10" fill="#262933"/>
-            <ellipse cx="156" cy="74" rx="5.5" ry="4.5" fill="#fda4af"/>
-            <circle cx="162" cy="67" r="2.2" fill="#fda4af"/>
-            <circle cx="157" cy="64" r="2.2" fill="#fda4af"/>
-            <circle cx="151" cy="65" r="2.2" fill="#fda4af"/>
-            <circle cx="147" cy="70" r="2.0" fill="#fda4af"/>
-          </g>
-        </g>
-
-        <g id="head-unit" class="anim-idle-head">
-          <g class="anim-ear-l">
-            <path d="M50 75 C48 58 62 26 74 18 C77 16 80 18 81 22 C86 36 90 54 88 70 Z" fill="url(#grad-fur-black)"/>
-            <path d="M55 70 C54 56 63 32 74 24 C76 26 83 48 82 66 Z" fill="#fbcfe8" opacity="0.9"/>
-            <path d="M52 68 Q68 54 72 65 Q66 45 76 54 Q70 38 76 34" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-            <path d="M58 66 Q70 52 78 62" stroke="#f1f5f9" stroke-width="2.0" stroke-linecap="round" fill="none"/>
-            <path d="M74 18 Q72 10 67 8" stroke="#181a24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+            <!-- お口：きゅっと結んだω型 -->
+            <path d="M94 116 Q100 120 100 114 Q100 120 106 116" stroke="#475569" stroke-width="1.6" fill="none"/>
           </g>
 
-          <g class="anim-ear-r">
-            <path d="M150 75 C152 58 138 26 126 18 C123 16 120 18 119 22 C114 36 110 54 112 70 Z" fill="url(#grad-fur-black)"/>
-            <path d="M145 70 C146 56 137 32 126 24 C124 26 117 48 118 66 Z" fill="#fbcfe8" opacity="0.9"/>
-            <path d="M148 68 Q132 54 128 65 Q134 45 124 54 Q130 38 124 34" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-            <path d="M142 66 Q130 52 122 62" stroke="#f1f5f9" stroke-width="2.0" stroke-linecap="round" fill="none"/>
-            <path d="M126 18 Q128 10 133 8" stroke="#181a24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+          <!-- 感情ポーズ：Talking（お話し中） -->
+          <g id="pose-talking" class="pose-group">
+            <ellipse cx="82" cy="98" rx="8" ry="11" fill="#38bdf8"/>
+            <ellipse cx="82" cy="98" rx="4.5" ry="8.5" fill="#0f172a"/>
+            <circle cx="80" cy="94" r="3" fill="#ffffff"/>
+            <ellipse cx="118" cy="98" rx="8" ry="11" fill="#38bdf8"/>
+            <ellipse cx="118" cy="98" rx="4.5" ry="8.5" fill="#0f172a"/>
+            <circle cx="116" cy="94" r="3" fill="#ffffff"/>
+            <!-- お口：あ〜んと開いてお喋り -->
+            <ellipse cx="100" cy="120" rx="6" ry="7" fill="#be185d"/>
+            <path d="M97 122 Q100 125 103 122" fill="#f472b6"/>
           </g>
 
-          <path d="M62 74 C46 86 48 100 58 108 C50 112 54 122 70 124 C82 126 92 129 100 129 C108 129 118 126 130 124 C146 122 150 112 142 108 C152 100 154 86 138 74 C124 64 76 64 62 74 Z" fill="url(#grad-fur-black)"/>
-          <path d="M66 105 C60 111 66 117 76 119 C70 115 68 109 66 105 Z" fill="#94a3b8" opacity="0.5"/>
-          <path d="M134 105 C140 111 134 117 124 119 C130 115 132 109 134 105 Z" fill="#94a3b8" opacity="0.5"/>
-
-          <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 100px 96px;">
-            <ellipse cx="77" cy="96" rx="11" ry="14" fill="url(#grad-emerald-eye)"/>
-            <ellipse cx="77" cy="96" rx="4.5" ry="11.5" fill="#090d16"/>
-            <circle cx="74" cy="92" r="3.6" fill="#ffffff"/>
-            <circle cx="79" cy="100" r="1.6" fill="#ffffff" opacity="0.85"/>
-
-            <ellipse cx="123" cy="96" rx="11" ry="14" fill="url(#grad-emerald-eye)"/>
-            <ellipse cx="123" cy="96" rx="4.5" ry="11.5" fill="#090d16"/>
-            <circle cx="120" cy="92" r="3.6" fill="#ffffff"/>
-            <circle cx="125" cy="100" r="1.6" fill="#ffffff" opacity="0.85"/>
+          <!-- 感情ポーズ：Thinking（考え中・首傾げ） -->
+          <g id="pose-thinking" class="pose-group">
+            <ellipse cx="82" cy="95" rx="7.5" ry="10" fill="#38bdf8"/>
+            <circle cx="82" cy="92" r="4" fill="#0f172a"/>
+            <circle cx="80" cy="90" r="2.5" fill="#ffffff"/>
+            <ellipse cx="118" cy="95" rx="7.5" ry="10" fill="#38bdf8"/>
+            <circle cx="118" cy="92" r="4" fill="#0f172a"/>
+            <circle cx="116" cy="90" r="2.5" fill="#ffffff"/>
+            <!-- お口：ちっちゃく「へ」の字 -->
+            <path d="M96 118 Q100 115 104 118" stroke="#475569" stroke-width="1.6" fill="none"/>
           </g>
 
-          <g id="eyes-happy" style="display:none;">
-            <path d="M66 98 Q77 84 88 98" stroke="#10b981" stroke-width="4.8" stroke-linecap="round" fill="none"/>
-            <path d="M66 98 Q77 84 88 98" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-            <path d="M112 98 Q123 84 134 98" stroke="#10b981" stroke-width="4.8" stroke-linecap="round" fill="none"/>
-            <path d="M112 98 Q123 84 134 98" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          <!-- 感情ポーズ：Happy（極楽笑顔・にっこり） -->
+          <g id="pose-happy" class="pose-group">
+            <!-- にっこり目（三日月・満面の笑み） -->
+            <path d="M74 98 Q82 88 90 98" stroke="#f472b6" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M110 98 Q118 88 126 98" stroke="#f472b6" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <!-- ほっぺの赤み -->
+            <ellipse cx="70" cy="110" rx="7" ry="4" fill="#f472b6" opacity="0.6"/>
+            <ellipse cx="130" cy="110" rx="7" ry="4" fill="#f472b6" opacity="0.6"/>
+            <!-- お口：大喜びの開き口 -->
+            <path d="M94 116 Q100 126 106 116 Z" fill="#e11d48"/>
           </g>
 
-          <polygon points="100,107 94,101 106,101" fill="#f472b6"/>
-
-          <g id="mouth-closed">
-            <path d="M94 109 Q100 114 100 109 Q100 114 106 109" stroke="#64748b" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-          </g>
-
-          <g id="mouth-talking" style="display:none;" class="mouth-talking">
-            <path d="M93 108 Q100 124 107 108 Z" fill="#be123c"/>
-            <ellipse cx="100" cy="116" rx="4.5" ry="3.5" fill="#fb7185"/>
-            <polygon points="95,108 96,111 97,108" fill="#ffffff"/>
-            <polygon points="103,108 104,111 105,108" fill="#ffffff"/>
-          </g>
-
-          <g id="mouth-happy" style="display:none;">
-            <path d="M91 108 Q100 127 109 108 Z" fill="#9f1239" stroke="#be123c" stroke-width="1.5"/>
-            <ellipse cx="100" cy="119" rx="6" ry="4.5" fill="#f43f5e"/>
-            <polygon points="94,108 95,112 97,108" fill="#ffffff"/>
-            <polygon points="103,108 105,112 106,108" fill="#ffffff"/>
-          </g>
-
-          <path d="M64 106 Q44 104 28 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-          <path d="M63 112 Q44 114 30 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-          <path d="M136 106 Q156 104 172 108" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-          <path d="M137 112 Q156 114 170 120" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>
-
+          <!-- モード連動アクセサリ（メガネ・帽子） -->
           <g id="cat-vector-accessories">
+            <!-- 博士帽 -->
             <g id="vec-acc-hat">
-              <path d="M72 50 Q100 42 128 50 L124 58 Q100 50 76 58 Z" fill="#1e293b"/>
-              <polygon points="100,22 148,36 100,50 52,36" fill="#0f172a" stroke="#334155" stroke-width="1.3"/>
-              <circle cx="100" cy="36" r="3" fill="#eab308"/>
-              <g class="mortar-tassel">
-                <path d="M100 36 Q124 38 130 56" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
-                <polygon points="128,56 133,56 135,70 126,70" fill="#eab308"/>
-              </g>
+              <polygon points="100,32 136,44 100,56 64,44" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+              <path d="M82,50 Q100,45 118,50 L116,56 Q100,51 84,56 Z" fill="#1e293b"/>
+              <circle cx="100" cy="44" r="2.5" fill="#eab308"/>
+              <path d="M100,44 Q120,48 126,62" stroke="#ca8a04" stroke-width="1.8" fill="none"/>
+              <polygon points="123,62 129,62 130,72 122,72" fill="#eab308"/>
             </g>
+
+            <!-- ぐるぐる黒ぶちメガネ -->
             <g id="vec-acc-glasses">
-              <circle cx="77" cy="96" r="17.5" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
-              <circle cx="77" cy="96" r="17.5" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
-              <circle cx="123" cy="96" r="17.5" fill="rgba(255, 255, 255, 0.16)" stroke="#090d16" stroke-width="3.8"/>
-              <circle cx="123" cy="96" r="17.5" fill="none" stroke="url(#stripe-bw-vector)" stroke-width="2.6"/>
-              <path d="M94.5 95 Q100 90 105.5 95" stroke="#090d16" stroke-width="3.8" fill="none"/>
+              <circle cx="82" cy="98" r="14" fill="rgba(255,255,255,0.2)" stroke="#090d16" stroke-width="3.5"/>
+              <circle cx="118" cy="98" r="14" fill="rgba(255,255,255,0.2)" stroke="#090d16" stroke-width="3.5"/>
+              <path d="M96 97 Q100 93 104 97" stroke="#090d16" stroke-width="3.5" fill="none"/>
             </g>
           </g>
         </g>
