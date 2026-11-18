@@ -1,20 +1,19 @@
-// [作業版 Rev.2] 絵日記写真の日付境界完全厳格化（写真プール別日混入バグ根絶・当日撮影写真のみ厳格抽出）
+// [作業版 Rev.1] 検索3段階使い分け・朗読正規表現バグ完全修正・ステータスカラー連動・潜在バグ総点検対策
 /* ==========================================================================
-   AIペット 共通対話基盤エンジンOS（Rev.2）
+   AIペット 共通対話基盤エンジンOS（v1.1.2 Rev.1）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
+   - 【検索3段階使い分け】質問・雑学はAIが音声解説、要求時のみGoogleマップ・ニュースカード発行
+   - 【朗読機能完全修復】ヘッダー除去の正規表現を厳格化し本文巻き込みを完全根絶、文分割フォールバック配備
+   - 【ステータス完全連動】マイク待機（エメラルドグリーン）・お話し中（青）・思考中（橙）の不可分同期
    - 【絵日記写真日付完全厳格化】写真保存時に日付キーを完全バインドし、別日への写真混入を物理的に根絶
    - 【当日写真厳格フィルタ】写真プール取得時に撮影日を厳密照合し、他日の写真の混入を100%遮断
    - 【写真原本エクスポート完全化】ストレージお掃除原本に本文・ひとことを完全保持しビューワー完全連携
-   - 【動的音声認識辞書エンジン新設】PCビューワーで登録・編集したカスタム単語辞書を動的適用
-   - 【Tailscale/ローカル直結対応】ホスト自動判定＆3500ms最適待機によりスマホ経由でもPC爆速GPU/CPU合成を100%完走
-   - 【TTSハイブリッド・自動フォールバック】Tailscale/PCローカル（最優先）➔ クラウド合成へフェイルオーバー
-   - 【位置情報2系統完全分離】ヘッダー表示用（cleanCityOnly）＆ 対話・検索用（detailedTownArea）
+   - 【動的音声認識辞書エンジン】PCビューワーで登録・編集したカスタム単語辞書を動的適用
+   - 【Tailscale/ローカル直結対応】ホスト自動判定＆3500ms最適待機によりスマホ経由でもPC爆速GPU合成完走
    - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
    - 【TTSレート制限(429)防護壁】クラウド利用時の429検知時クールダウンタイマー＆安全キューイング機構維持
    - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
-   - 【PC逆インポート安全防護壁】PCから戻した大きな画像によるスマホ容量パンクを自動再スリム化で完全防御
-   - 【4.0MB自動監視アラート】4MB到達時にPCバックアップを優しく促す安全センサー常時稼働
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶＆豊かな元祖ゴロゴロ音
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
    ========================================================================== */
@@ -71,13 +70,13 @@ const FIXED_LITE_MODELS = Object.freeze([
   "gemini-flash-lite-latest"   // 第2優先（タイムアウト時バックアップ）
 ]);
 
-/* ★ 正式なFunction Calling定義 */
+/* ★ 正式なFunction Calling定義（過剰反応を防ぐ厳格な説明付き） */
 const KURO_TOOLS = [
   {
     functionDeclarations: [
       {
         name: "searchMapPlaces",
-        description: "Googleマップでお店（ラーメン、焼肉等）や公園、カフェ、休憩スポット、散策施設を検索して案内カードを表示します。",
+        description: "ユーザーが『探して』『どこ？』『案内して』とお散歩スポット、公園、カフェ、飲食店（ラーメン等）の具体的な場所や地図を求めた時のみ実行してください。単なる料理の質問や雑談では絶対に呼び出さないでください。",
         parameters: {
           type: "OBJECT",
           properties: {
@@ -89,7 +88,7 @@ const KURO_TOOLS = [
       },
       {
         name: "searchLatestNews",
-        description: "Googleニュースで最新のニュースを検索して案内カードを表示します。",
+        description: "ユーザーが『ニュース教えて』『速報見せて』『ニュース記事』と最新の時事ニュースを求めた時のみ実行してください。歴史上の出来事や一般的な解説質問では呼び出さないでください。",
         parameters: {
           type: "OBJECT",
           properties: {
@@ -263,7 +262,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（動的カスタム辞書統合版）
+   MODULE 1: 音声合成＆音声認識エンジン（ステータス完全連動＆安全朗読版）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -541,6 +540,7 @@ class AudioSpeechEngine {
   playImmediateFiller(type = 'general') {
     this.unlockMasterAudio();
     this.playEffect('aizuchi');
+    if (AppCore.setStatus) AppCore.setStatus('thinking');
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
   }
 
@@ -742,9 +742,14 @@ class AudioSpeechEngine {
 
       this.masterAudio.onplaying = () => {
         this.isSpeaking = true;
-        if (AppCore.state.isRunning) {
+        if (AppCore.setStatus) {
+          AppCore.setStatus('speaking', "🗣️ お話し中♪");
+        } else {
           const st = document.getElementById('status-text');
-          if (st) st.textContent = "🗣️ お話し中♪";
+          if (st) {
+            st.className = "status-speaking";
+            st.textContent = "🗣️ お話し中♪";
+          }
         }
         if (onStart) onStart();
       };
@@ -757,9 +762,7 @@ class AudioSpeechEngine {
         setTimeout(() => {
           this.isSpeechProducing = false;
           if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
-            const st = document.getElementById('status-text');
-            const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-            if (st) st.textContent = `👂 聴いてる${suffix}`;
+            if (AppCore.setStatus) AppCore.setStatus('hearing');
             this.startListening();
           }
         }, dynamicCooldown);
@@ -771,7 +774,10 @@ class AudioSpeechEngine {
         if (onStart) onStart(); if (onEnd) onEnd();
         setTimeout(() => {
           this.isSpeechProducing = false;
-          if (AppCore.state.isRunning) this.startListening();
+          if (AppCore.state.isRunning) {
+            if (AppCore.setStatus) AppCore.setStatus('hearing');
+            this.startListening();
+          }
         }, dynamicCooldown);
       };
 
@@ -787,15 +793,14 @@ class AudioSpeechEngine {
         this.isSpeechProducing = false;
         this.lastSpeechEndTime = Date.now();
         if (AppCore.state.isRunning && !this.isActionButtonLocked && !AppCore.state.isThinking) {
-          const st = document.getElementById('status-text');
-          const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-          if (st) st.textContent = `👂 聴いてる${suffix}`;
+          if (AppCore.setStatus) AppCore.setStatus('hearing');
           this.startListening();
         }
       }, dynamicCooldown);
     }
   }
 
+  // ★重要：ヘッダー巻き込みバグを完全根絶し、本文を1文字も削らずスラスラ朗読
   async readDiarySeamless(diaryContentOnly, speakerIdOverride = null, onSentenceStart = null, onComplete = null) {
     this.isSpeechProducing = true;
     this.stopSpeaking();
@@ -806,15 +811,26 @@ class AudioSpeechEngine {
     const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
     Logger.log(`[Diary] 朗読モード開始`, "info");
 
-    let readBody = (diaryContentOnly || '').replace(/^【?\d{4}年\d{1,2}月\d{1,2}日[\s\S]*?(?:℃|度|天気[^\n]+)?】?\s*\n*/u, '').trim();
-    readBody = readBody.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?)\s*[^\n]+$/u, '').trim();
+    // 1行目の【日付 ...】ヘッダーのみを安全に除去（本文巻き込み完全防止）
+    let readBody = (diaryContentOnly || '').replace(/^【[^】]+】\s*\n*/u, '').trim();
+    // 末尾のひとことタグを除去
+    readBody = readBody.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*[^\n]+$/u, '').trim();
 
-    const sentences = this.cleanEndingNenyan(readBody)
+    if (!readBody) readBody = diaryContentOnly || "";
+
+    let sentences = this.cleanEndingNenyan(readBody)
       .split(/([。！？!\?\n]+)/)
       .reduce((acc, cur, i, arr) => {
         if (i % 2 === 0 && cur.trim()) acc.push((cur + (arr[i+1]||'')).trim());
         return acc;
       }, []).filter(s => s.length > 0);
+
+    // 文分割が万が一0件になった場合のフォールバック安全ネット
+    if (sentences.length === 0 && readBody.trim()) {
+      sentences = [readBody.trim()];
+    }
+
+    if (AppCore.setStatus) AppCore.setStatus('speaking', `📖 朗読中♪`);
 
     for (let i = 0; i < sentences.length; i++) {
       if (!this.isReadingAloud || !AppCore.state.isRunning) break;
@@ -843,9 +859,7 @@ class AudioSpeechEngine {
     this.isSpeaking = false;
     this.lastSpeechEndTime = Date.now();
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
-    const st = document.getElementById('status-text');
-    const suffix = getCurChar().id === 'shiro' ? 'ホ♪' : 'ニャ♪';
-    if (st && AppCore.state.isRunning) st.textContent = `👂 聴いてる${suffix}`;
+    if (AppCore.setStatus) AppCore.setStatus('hearing');
     if (onComplete) onComplete();
 
     setTimeout(() => {
@@ -887,7 +901,8 @@ class AudioSpeechEngine {
       }
       this.isListening = true;
       this.isStarting = false;
-      Logger.log(`[Mic] 👂 マイク待機開始`, "info");
+      Logger.log(`[Mic] 👂 マイク待機開始（エメラルドグリーン点灯）`, "info");
+      if (AppCore.setStatus) AppCore.setStatus('hearing');
       if (this.onListeningStatus) this.onListeningStatus(true);
     };
 
@@ -1323,7 +1338,6 @@ const StorageManager = {
     try { return JSON.parse(localStorage.getItem(dailyKey)) || []; } catch(e) { return []; }
   },
 
-  // ★重要：対象日付（customDateKey）を明示的に受け取り、別日プールへの混入を物理遮断
   addPhotoToDailyPool(photoBase64, userComment = "", customDateKey = null) {
     if (!photoBase64) return;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1366,13 +1380,11 @@ const StorageManager = {
     } catch(e) { return false; }
   },
 
-  // ★重要：指定日の日付（lifeDateKey）に撮影された写真のみを厳密抽出（他日の混入完全排除）
   getDailyPhotoPool(lifeDateKey) {
     const activeId = getCurChar().id;
     const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
     try {
       let pool = JSON.parse(localStorage.getItem(key)) || [];
-      // 写真データにdateKeyが存在する場合、対象日と一致するもののみを厳格フィルタ
       pool = pool.filter(p => !p.dateKey || p.dateKey === lifeDateKey);
 
       if (pool.length === 0) {
@@ -1442,6 +1454,7 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
+  // ★重要：ヘッダー巻き込み・本文破壊を完全防止した統一保存処理
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1458,7 +1471,8 @@ const StorageManager = {
       cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
-    cleanContent = cleanContent.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+    // 1行目の【...】ヘッダーのみを安全に除去（本文巻き込み完全防止）
+    cleanContent = cleanContent.replace(/^【[^】]+】\s*\n*/u, '').trim();
     cleanContent = cleanContent.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
     const weatherStr = LocationProvider.weather || "快晴";
@@ -1478,7 +1492,6 @@ const StorageManager = {
 
     let targetPhoto = photoData || (idx >= 0 ? list[idx].photo : null) || null;
     if (targetPhoto) {
-      // ★修正：第3引数に対象日付（dateKey）を渡し、過去日記保存時に今日へ写真が紛れ込むのを物理遮断
       this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真", dateKey);
     }
 
@@ -1666,7 +1679,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.1",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.2",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1716,7 +1729,7 @@ const StorageManager = {
         if (d && d.content && !d.content.startsWith('【')) {
           const w = d.weather || "快晴";
           const t = d.temperature !== undefined ? `${d.temperature}℃` : "10℃";
-          d.content = `【${d.fullDate || d.dateKey} 天気:${w} 気温:${t}】\n\n` + d.content.replace(/^【?[0-9０-９一二三四五六七八九〇]+年[^\n]+】?\s*\n*/u, '').trim();
+          d.content = `【${d.fullDate || d.dateKey} 天気:${w} 気温:${t}】\n\n` + d.content.replace(/^【[^】]+】\s*\n*/u, '').trim();
         }
         return d;
       });
