@@ -1,10 +1,10 @@
-<!-- [v1.0.0 作業版 Rev.8] style.css外出し分離・HTML構造最適化スリム化 -->
+<!-- [作業版 Rev.2] バージョンハードコード撤廃・キャッシュバスター強制付与（Tailscale対策） -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AIペット クロちゃん＆シロくん🐾🦉 v1.0.0</title>
+  <title>AIペット クロちゃん＆シロくん🐾🦉</title>
 
   <!-- キャッシュ完全無効化設定 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -18,8 +18,8 @@
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
-  <!-- 外出し分離スタイルシート -->
-  <link rel="stylesheet" href="style.css">
+  <!-- 外出し分離スタイルシート（キャッシュバスター付与） -->
+  <link rel="stylesheet" href="style.css?v=v1.1.1">
 </head>
 <body>
 
@@ -178,7 +178,7 @@
           <button class="btn-circle" id="settings-btn" title="設定・記憶・トリセツ">⚙️</button>
         </div>
 
-        <div class="app-version-tag" id="app-footer-version-tag">🐾 AIペット v1.0.0</div>
+        <div class="app-version-tag" id="app-footer-version-tag">🐾 AIペット</div>
       </div>
     </div>
   </div>
@@ -630,11 +630,11 @@
     </div>
   </div>
 
-  <!-- スクリプト読み込み（キャラクタープラグイン群 ➔ バージョン管理 ➔ 基盤エンジン ➔ 対話司令塔） -->
-  <script src="char_kuro.js"></script>
-  <script src="char_shiro.js"></script>
-  <script src="version.js"></script>
-  <script src="core_engine.js"></script>
-  <script src="app.js"></script>
+  <!-- スクリプト読み込み（キャッシュバスター ?v=v1.1.1 付与でTailscale環境のキャッシュ問題を完全解決） -->
+  <script src="char_kuro.js?v=v1.1.1"></script>
+  <script src="char_shiro.js?v=v1.1.1"></script>
+  <script src="version.js?v=v1.1.1"></script>
+  <script src="core_engine.js?v=v1.1.1"></script>
+  <script src="app.js?v=v1.1.1"></script>
 </body>
 </html>
