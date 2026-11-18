@@ -1,4 +1,4 @@
-<!-- [作業版 Rev.2] バージョンハードコード撤廃・キャッシュバスター強制付与（Tailscale対策） -->
+<!-- [作業版 Rev.1] 上部ヘッダーUI刷新・モデルバッジ撤廃・日記帳右端移設・キャッシュバスターv1.1.2統一 -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -19,7 +19,7 @@
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
   <!-- 外出し分離スタイルシート（キャッシュバスター付与） -->
-  <link rel="stylesheet" href="style.css?v=v1.1.1">
+  <link rel="stylesheet" href="style.css?v=v1.1.2">
 </head>
 <body>
 
@@ -33,6 +33,7 @@
     <!-- 左列：情報 ＆ 会話エリア -->
     <div class="app-col-left">
       <div class="top-header">
+        <!-- 左端：日時・天気・現在地 -->
         <div class="top-header-left">
           <div class="header-weather-clock-box">
             <div class="hwc-row-datetime">
@@ -43,16 +44,16 @@
               <span class="hwc-location-badge" id="clock-display-location">東村山市</span>
             </div>
           </div>
-
-          <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでの絵日記をアルバムで開くニャ！">📖 日記帳</button>
         </div>
 
+        <!-- 中央：状態がひと目でわかるステータスバッジ（マイクON時はエメラルドグリーン発光） -->
         <div id="status-badge-container">
-          <span id="status-text">👂 聴いてるニャ♪</span>
+          <span id="status-text" class="status-hearing">👂 聴いてるニャ♪</span>
         </div>
 
+        <!-- 右端：日記帳ボタン（旧モデルバッジを撤廃し、押しやすい特等席へ移設） -->
         <div class="top-header-right">
-          <span id="model-badge" class="model-badge lite">🐾 3.5 Flash Lite</span>
+          <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでの絵日記をアルバムで開くニャ！">📖 日記帳</button>
         </div>
       </div>
 
@@ -308,8 +309,8 @@
         <div class="manual-content">
           <div class="manual-sec-title">🐾 パートナーの仲間たち</div>
           <div>
-            ・<b>クロちゃん🐾</b>：ノルウェージャンフォレストキャットの1歳の元気な女の子。甘えん坊でちゅ〜るが大好き！おやびんが世界一好きニャン♪<br>
-            ・<b>シロくん（ホウ博士）🦉</b>：手のひらサイズのメガネフクロウの男の子。自称・大天才ナビゲーターの博識学者。ちょっぴりツンデレで「ホウ博士」と呼ばれると羽をパタパタさせて喜びます。夜行性なので夜更かし仲間になってくれますホ！
+            ・<b>クロちゃん🐾</b>：ノルウェージャンフォレストキャットの1歳の女の子。座ると膝の上、寝転ぶとおなかに乗ってくる甘えん坊！前世は大発明家で珍発明の昔話をしてくれます♪<br>
+            ・<b>シロくん（ホウ博士）🦉</b>：手のひらサイズのメガネフクロウ。未来の超時空研究所から迷い込んできた大天才学者！助手の右肩と左腕が大のお気に入りで、軽すぎて風に飛ばされそうになる可愛いツンデレですホ！
           </div>
 
           <div class="manual-sec-title">🗣️ 基本のお話し方</div>
@@ -325,16 +326,17 @@
             ・<b>お散歩ミッション</b>：「お散歩ミッションちょうだい！」「探検しよ」（見つけたら📷写真で見せてニャ！）<br>
             ・<b>肉球うらない・星占い</b>：「今日の運勢は？」「占って」「ラッキーアイテムは？」<br>
             ・<b>現在地の確認</b>：「いまどこ？」「ここどこ？」（歩行中でも即座にGPS測位！）<br>
+            ・<b>一般的な質問</b>：「〜〜ってどんな意味？」「オムライスの作り方は？」（AIが自分の言葉でじっくり解説します！）<br>
             ・<b>日常会話・夜更かし</b>：「何してる？」「おはよう」「おやすみ」
           </div>
 
           <div style="font-weight:900; color:#0284c7; margin-top:3px;">②【👓 おてつだいモード】（案内・散策コンシェルジュ）</div>
           <div class="manual-kw-box">
-            ・<b>公園・散策スポット</b>：「近くの公園探して」「散歩コース」「景色のいいところ」<br>
-            ・<b>カフェ・休憩場所</b>：「休憩できるカフェ」「冷たいもの飲みたい」「ベンチある？」<br>
-            ・<b>グルメ探し</b>：「ラーメン」「ホルモン」「焼肉」「餃子」「お腹すいた」<br>
-            ・<b>最新ニュース</b>：「ニュース教えて」「大谷翔平の話題」「東村山のニュース」<br>
-            ※おてつだいモードでは、現在地周辺のGoogleマップカードがパッとタイムラインに飛び出します！
+            ・<b>公園・散策スポット</b>：「近くの公園探して」「散歩コース案内して」「景色のいいところどこ？」<br>
+            ・<b>カフェ・休憩場所</b>：「休憩できるカフェ探して」「近くの喫茶店どこ？」<br>
+            ・<b>グルメ探し</b>：「美味しいラーメン探して」「ホルモンの店どこ？」「焼肉屋案内して」<br>
+            ・<b>最新ニュース</b>：「最新ニュース教えて」「大谷翔平の速報見せて」「東村山のニュース記事」<br>
+            ※おてつだいモードで場所やニュースを探してほしい時は、Googleマップやニュースカードがパッとタイムラインに飛び出します！
           </div>
 
           <div class="manual-sec-title">🎨 新・4大背景テーマ</div>
@@ -345,7 +347,8 @@
 
           <div class="manual-sec-title">📷 写真を見せる ＆ 思い出写真（12枚上限と個別整理）</div>
           <div>下の「📷 写真」ボタンを押すと、スマホのカメラで撮った写真やアルバムの写真をペットに見せられます！今日撮った写真の中から、日記の内容に一番ぴったりのベストショットをAIが選んで絵日記に飾ります♪<br>
-          ・<b>左右2分割アルバム</b>：日記帳を開くと、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が並びます。タップで切替や全画面拡大ができます。<br>
+          ・<b>左右2分割アルバム</b>：写真がある日は、左にメイン写真、右側に今日撮ったスナップ写真（最大12枚）が並びます。タップで切替や全画面拡大ができます。<br>
+          ・<b>写真がない日のスケッチ</b>：写真を撮らなかった日は、クロちゃんやシロくんが一生懸命描いた可愛い手描きスケッチイラストが飾られます！<br>
           ・<b>写真の個別整理</b>：スナップ写真の右上の【✕】ボタンを押すと、不要な写真だけを選んで1枚ずつ削除できます。</div>
 
           <div class="manual-sec-title">📖 絵日記の仕様と生活リズム</div>
@@ -630,11 +633,11 @@
     </div>
   </div>
 
-  <!-- スクリプト読み込み（キャッシュバスター ?v=v1.1.1 付与でTailscale環境のキャッシュ問題を完全解決） -->
-  <script src="char_kuro.js?v=v1.1.1"></script>
-  <script src="char_shiro.js?v=v1.1.1"></script>
-  <script src="version.js?v=v1.1.1"></script>
-  <script src="core_engine.js?v=v1.1.1"></script>
-  <script src="app.js?v=v1.1.1"></script>
+  <!-- スクリプト読み込み（キャッシュバスター ?v=v1.1.2 付与でTailscale環境のキャッシュ問題を完全解決） -->
+  <script src="char_kuro.js?v=v1.1.2"></script>
+  <script src="char_shiro.js?v=v1.1.2"></script>
+  <script src="version.js?v=v1.1.2"></script>
+  <script src="core_engine.js?v=v1.1.2"></script>
+  <script src="app.js?v=v1.1.2"></script>
 </body>
 </html>
