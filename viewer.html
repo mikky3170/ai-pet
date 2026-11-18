@@ -1,10 +1,10 @@
-<!-- [v1.0.0 作業版 Rev.2] 高画質写真プロテクトマージ機能・写真やり取り手順ガイド追加・v1.0.0初登録仕様 -->
+<!-- [v1.1.1 作業版 Rev.1] 写真原本JSON・本文未作成日での写真100%閲覧可能化・動的音声認識辞書エディター新設 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 v1.0.0</title>
+  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 v1.1.1</title>
 
   <style>
     :root {
@@ -318,22 +318,21 @@
     }
 
     .diary-empty-card {
-      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       background: #fffaf5;
       border: 2px dashed #fed7aa;
-      border-radius: 20px;
-      padding: 30px 20px;
+      border-radius: 16px;
+      padding: 16px 14px;
       text-align: center;
-      gap: 12px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 6px;
     }
-    .diary-empty-icon { font-size: 48px; filter: drop-shadow(0 2px 8px rgba(234, 88, 12, 0.2)); }
-    .diary-empty-title { font-size: 16px; font-weight: 900; color: #9a3412; }
-    .diary-empty-desc { font-size: 12.5px; color: #c2410c; line-height: 1.6; max-width: 360px; }
+    .diary-empty-icon { font-size: 32px; filter: drop-shadow(0 2px 6px rgba(234, 88, 12, 0.2)); }
+    .diary-empty-title { font-size: 13.5px; font-weight: 900; color: #9a3412; }
+    .diary-empty-desc { font-size: 11.5px; color: #c2410c; line-height: 1.5; max-width: 380px; }
 
     .diary-photo-duo-container {
       width: 100%;
@@ -689,7 +688,7 @@
     .modal-window {
       background: #ffffff;
       width: 100%;
-      max-width: 720px;
+      max-width: 740px;
       max-height: 88vh;
       border-radius: 24px;
       padding: 24px;
@@ -721,6 +720,7 @@
       gap: 6px;
       border-bottom: 2px solid #e2e8f0;
       padding-bottom: 4px;
+      flex-wrap: wrap;
     }
     .mem-tab-btn {
       padding: 7px 14px;
@@ -800,6 +800,40 @@
       transition: all 0.15s;
     }
     .btn-save-memories-main:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+    /* 音声辞書エディター専用UI */
+    .dict-item-row {
+      display: flex;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 6px 10px;
+      gap: 8px;
+    }
+    .dict-from-input {
+      flex: 1.4;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      background: #ffffff;
+      outline: none;
+    }
+    .dict-arrow {
+      color: #0284c7;
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .dict-to-input {
+      flex: 1.1;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      background: #ffffff;
+      outline: none;
+    }
 
     .guide-section-box {
       background: #f8fafc;
@@ -891,7 +925,7 @@
     <div class="header-logo">
       <span>📖</span>
       <span>クロちゃんの思い出アルバム ＆ バックアップ エディター</span>
-      <span class="badge" id="header-pkg-version">v1.0.0 対応</span>
+      <span class="badge" id="header-pkg-version">v1.1.1 対応</span>
     </div>
 
     <div class="header-actions">
@@ -909,7 +943,8 @@
       <div class="dropzone-icon">🐾📁</div>
       <div class="dropzone-title">クロちゃんのバックアップファイル（JSON）をここにドロップ</div>
       <div class="dropzone-desc">
-        スマホの設定画面で「📁 ファイル保存」したバックアップファイル（.json）を<br>
+        スマホの設定画面で「📁 ファイル保存」したバックアップファイル（.json）、または<br>
+        「🧹 写真ストレージ安全お掃除」で保存した写真原本JSONを<br>
         この枠内にドラッグ＆ドロップ、またはクリックして選択してくださいニャ！
       </div>
       <button type="button" class="btn-action-top primary" style="margin: 0 auto; padding: 10px 24px; font-size: 13.5px;">ファイルを選択する</button>
@@ -938,7 +973,7 @@
         <div class="diary-page-header">
           <div class="diary-page-date">
             <span>📅</span>
-            <span id="diary-full-date-disp">2026年11月5日 (木)</span>
+            <span id="diary-full-date-disp">2026年11月9日</span>
           </div>
           <div class="diary-page-meta">
             <span id="diary-weather-disp">🌤️ 快晴</span>
@@ -946,19 +981,18 @@
           </div>
         </div>
 
+        <!-- 本文未作成時のみコンパクトに表示される案内 -->
         <div class="diary-empty-card" id="diary-empty-view" style="display:none;">
           <div class="diary-empty-icon">🐾📖</div>
           <div class="diary-empty-title">この日はまだ絵日記が書かれていませんニャ🐾</div>
           <div class="diary-empty-desc">
-            右ページでその日の会話ログを振り返ることができますニャン♪<br>
-            <span style="font-size:11.5px; color:#9a3412; font-weight:bold; margin-top:6px; display:inline-block;">
-              ※データの整合性を安全に守るため、絵日記の新規作成はスマホ側で行ってくださいニャ！
-            </span>
+            右ページで会話ログを振り返ったり、下の入力欄でPCから直接日記を推敲してスマホに戻せますニャン♪
           </div>
         </div>
 
         <div id="diary-editor-view" style="display:flex; flex-direction:column; gap:10px; flex:1;">
-          <div class="diary-photo-duo-container">
+          <!-- 写真枠：写真が存在する日は常に100%表示 -->
+          <div class="diary-photo-duo-container" id="diary-photo-container">
             <div class="photo-duo-left" id="diary-main-photo-box" title="クリックでフルサイズ拡大プレビュー">
               <img src="" alt="メイン写真" id="diary-main-photo-img">
               <span class="photo-size-badge" id="main-photo-size-badge">24 KB</span>
@@ -1009,17 +1043,19 @@
       <div class="modal-header-row">
         <div class="modal-header-title">
           <span>📌</span>
-          <span>記憶帳 ＆ システム設定</span>
+          <span>記憶帳 ＆ 音声辞書 ＆ システム設定</span>
         </div>
         <button type="button" class="btn-action-top" id="btn-close-mem-settings">✕ 閉じる</button>
       </div>
 
       <div class="mem-tab-bar">
         <button type="button" class="mem-tab-btn active" data-target="tab-memories">📌 記憶帳（絆・設定）</button>
+        <button type="button" class="mem-tab-btn" data-target="tab-dictionary">🗣️ 音声認識辞書（言い換え）</button>
         <button type="button" class="mem-tab-btn" data-target="tab-settings">⚙️ 声・見た目の設定</button>
         <button type="button" class="mem-tab-btn" data-target="tab-maint">🗄️ データ管理・過去の大掃除</button>
       </div>
 
+      <!-- 記憶帳タブ -->
       <div class="mem-tab-pane active" id="tab-memories">
         <div style="font-size:12px; color:#475569; line-height:1.5;">
           一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の「💾 記憶の変更を保存するニャ！」を押してくださいニャン🐾
@@ -1037,11 +1073,36 @@
         </button>
       </div>
 
+      <!-- 音声認識辞書タブ（新設） -->
+      <div class="mem-tab-pane" id="tab-dictionary">
+        <div style="font-size:12px; color:#475569; line-height:1.55;">
+          <b>🗣️ マイクの聞き間違い言い換え辞書:</b><br>
+          マイクが誤認識しやすい言葉（例:「ジムニー」）を、正しい言葉（例:「Gemini」）へスマホ内で自動置換します。<br>
+          ※変換前の言葉はカンマ区切り（,）で複数登録できます。
+        </div>
+
+        <div id="dict-items-container" style="display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; padding:2px;"></div>
+
+        <div style="display:flex; gap:6px; margin-top:4px; align-items:center;">
+          <input type="text" id="new-dict-from" placeholder="誤認識される言葉（例: ジムニー, ジェミニ）" style="flex:1.4; padding:7px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
+          <span style="color:#0284c7; font-weight:900;">➔</span>
+          <input type="text" id="new-dict-to" placeholder="正しい言葉（例: Gemini）" style="flex:1.1; padding:7px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
+          <button type="button" class="btn-action-top primary" id="btn-add-dict-row" style="padding:6px 12px; white-space:nowrap;">＋ 追加</button>
+        </div>
+
+        <button type="button" class="btn-save-memories-main" id="btn-save-dictionary">
+          <span>💾</span>
+          <span>音声辞書の変更を保存するニャ！</span>
+        </button>
+      </div>
+
+      <!-- 設定確認タブ -->
       <div class="mem-tab-pane" id="tab-settings">
         <div style="font-size:12px; color:#475569;">スマホアプリ本体の音声や見た目の設定内容です。</div>
         <div id="settings-view-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; font-size:12px;"></div>
       </div>
 
+      <!-- 過去データ管理タブ -->
       <div class="mem-tab-pane" id="tab-maint">
         <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px; font-size:12px; color:#9a3412; line-height:1.55;">
           <b>🗄️ 過去データの救済・大掃除:</b><br>
@@ -1085,8 +1146,8 @@
              ➔ PCの大画面で、綺麗な高画質スナップ写真を鑑賞・印刷・PDF保存できます。<br><br>
           3. <b>スマホから後日バックアップを読み込んでも安心（高画質保護）</b>:<br>
              後日、スマホで軽量化されたデータ（3〜5KB）をPCビューワーに読み込ませても、<b>PC側の高画質写真は自動保護され、絶対に荒い写真で上書きされません</b>。<br><br>
-          4. <b>PCで日記を直してスマホに戻す</b>:<br>
-             PCで日記や記憶を推敲したら「💾 スマホに戻す保存」を押し、スマホの設定で「📁 ファイル読込」を行えば、<b>スマホでおしゃべりした最新の会話ログを一切消さずに、日記と記憶だけが安全に更新</b>されます！
+          4. <b>PCで日記や音声辞書を直してスマホに戻す</b>:<br>
+             PCで日記や記憶、音声言い換え辞書を推敲したら「💾 スマホに戻す保存」を押し、スマホの設定で「📁 ファイル読込」を行えば、<b>スマホでおしゃべりした最新の会話ログを一切消さずに、日記と記憶・辞書だけが安全に更新</b>されます！
         </div>
       </div>
 
@@ -1100,11 +1161,10 @@
       </div>
 
       <div class="guide-section-box edit">
-        <div class="guide-sec-title">② 日記や記憶を直す（エディター機能）</div>
+        <div class="guide-sec-title">② 日記や記憶・音声辞書を直す（エディター機能）</div>
         <div class="guide-sec-body">
           ・<b>【絵日記の推敲】</b>: メイン画面の左ページで、過去の日記本文やクロのひとことを直接キーボードで手直しできます。スナップ写真一覧の「✕」を押すと不要な写真を1枚ずつ整理できます。<br>
-          ・<b>【記憶帳の編集】</b>: 右上の「📌 記憶帳・設定」を開くと、パートナーとの大切な記憶（プロフィールや好物、家族の思い出）をじっくり編集・更新できます。<br>
-          ※安全のため、新しい日記の執筆はスマホ側で行ってくださいニャ！
+          ・<b>【記憶帳 ＆ 音声辞書】</b>: 右上の「📌 クロの記憶帳・設定」を開くと、パートナーとの大切な記憶や、マイクの誤変換言い換え辞書をじっくり編集・更新できます。
         </div>
       </div>
 
@@ -1142,7 +1202,7 @@
   <script src="version.js"></script>
   <script>
     /* ==========================================================================
-       バックアップデータ解析・エディター＆高画質保護エンジン (v1.0.0)
+       バックアップデータ解析・エディター＆高画質保護エンジン (v1.1.1)
        ========================================================================== */
     let gPackageData = null;
     let gSortedDateKeys = [];
@@ -1168,6 +1228,13 @@
     const newMemInput = document.getElementById('new-mem-input');
     const btnAddMemory = document.getElementById('btn-add-memory');
     const btnSaveMemories = document.getElementById('btn-save-memories');
+
+    const dictItemsContainer = document.getElementById('dict-items-container');
+    const newDictFrom = document.getElementById('new-dict-from');
+    const newDictTo = document.getElementById('new-dict-to');
+    const btnAddDictRow = document.getElementById('btn-add-dict-row');
+    const btnSaveDictionary = document.getElementById('btn-save-dictionary');
+
     const settingsViewGrid = document.getElementById('settings-view-grid');
     const maintUncompressedStatus = document.getElementById('maint-uncompressed-status');
     const btnRunRecompress = document.getElementById('btn-run-recompress');
@@ -1336,15 +1403,17 @@
       gSortedDateKeys = Array.from(dateSet).sort().reverse();
       if (gSortedDateKeys.length === 0) gSortedDateKeys.push(todayKey);
 
+      // 写真またはしっかりした日記がある日を初期選択
       let initialKey = gSortedDateKeys[0];
-      const latestDiary = (pkg.diaries || []).find(d => d.dateKey === initialKey);
-      if (!isProperDiaryItem(latestDiary)) {
-        const foundProper = gSortedDateKeys.find(key => {
-          const d = (pkg.diaries || []).find(item => item.dateKey === key);
-          return isProperDiaryItem(d);
-        });
-        if (foundProper) initialKey = foundProper;
-      }
+      const hasContentOrPhoto = (k) => {
+        const d = (pkg.diaries || []).find(item => item.dateKey === k);
+        if (isProperDiaryItem(d)) return true;
+        const pool = pkg.dailyPhotoPools ? (pkg.dailyPhotoPools[`kuro_daily_photos_${k}`] || pkg.dailyPhotoPools[`kuro_daily_photos_shiro_${k}`]) : null;
+        return (pool && pool.length > 0) || (d && !!d.photo);
+      };
+
+      const foundInitial = gSortedDateKeys.find(k => hasContentOrPhoto(k));
+      if (foundInitial) initialKey = foundInitial;
       gCurrentDateKey = initialKey;
 
       dropzoneContainer.style.display = 'none';
@@ -1353,7 +1422,7 @@
       btnOpenMemSettings.style.display = 'flex';
       btnOpenGuide.style.display = 'flex';
 
-      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.0.0";
+      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.1";
       const verTag = document.getElementById('header-pkg-version');
       if (verTag) verTag.textContent = `${currentVer} （${pkg.exportedAt || 'バックアップ'}）`;
 
@@ -1410,9 +1479,15 @@
 
         const diary = (gPackageData.diaries || []).find(d => d.dateKey === key);
         const hasDiary = isProperDiaryItem(diary);
+        const pool = gPackageData.dailyPhotoPools ? (gPackageData.dailyPhotoPools[`kuro_daily_photos_${key}`] || gPackageData.dailyPhotoPools[`kuro_daily_photos_shiro_${key}`]) : null;
+        const hasPhotos = (pool && pool.length > 0) || (diary && !!diary.photo);
         const fullDate = diary?.fullDate || key;
 
-        opt.textContent = `${hasDiary ? '📖' : '💬'} ${fullDate} ${idx === 0 ? '（最新）' : ''}`;
+        let icon = '💬';
+        if (hasDiary) icon = '📖';
+        else if (hasPhotos) icon = '📷';
+
+        opt.textContent = `${icon} ${fullDate} ${idx === 0 ? '（最新）' : ''}`;
         dateDropdown.appendChild(opt);
       });
 
@@ -1441,6 +1516,7 @@
       };
     }
 
+    // ★重要改修：本文が未作成の日であっても写真プールが存在すれば写真枠を100%表示
     function renderCurrentSpread() {
       const curIdx = gSortedDateKeys.indexOf(gCurrentDateKey);
       btnPrevDay.disabled = (curIdx >= gSortedDateKeys.length - 1);
@@ -1458,17 +1534,9 @@
       const duoRightHeaderText = document.getElementById('duo-right-header-text');
       const snapGridBox = document.getElementById('snap-grid-box');
 
-      dateDisp.textContent = diary?.fullDate || `${gCurrentDateKey}（未作成）`;
+      dateDisp.textContent = diary?.fullDate || `${gCurrentDateKey}`;
       weatherDisp.textContent = `🌤️ ${diary?.weather || '快晴'}`;
       tempDisp.textContent = `🌡️ ${diary?.temperature || '22'}℃`;
-
-      if (!hasProperDiary) {
-        diaryEmptyView.style.display = 'flex';
-        diaryEditorView.style.display = 'none';
-      } else {
-        diaryEmptyView.style.display = 'none';
-        diaryEditorView.style.display = 'flex';
-      }
 
       diaryTextInput.value = diary?.content || "";
       diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
@@ -1486,6 +1554,18 @@
       if (diary?.photo && !photos.some(p => p.base64 === diary.photo)) {
         photos.unshift({ base64: diary.photo, comment: "メイン写真", time: "12:00" });
       }
+
+      const hasPhotos = (photos.length > 0 || !!diary?.photo);
+
+      // 本文未作成案内メッセージの表示制御
+      if (!hasProperDiary && !hasPhotos) {
+        diaryEmptyView.style.display = 'flex';
+      } else if (!hasProperDiary && hasPhotos) {
+        diaryEmptyView.style.display = 'flex';
+      } else {
+        diaryEmptyView.style.display = 'none';
+      }
+      diaryEditorView.style.display = 'flex';
 
       const mainPhotoBase64 = diary?.photo || (photos.length > 0 ? photos[0].base64 : null);
 
@@ -1542,6 +1622,20 @@
             if (diary) {
               diary.photo = p.base64;
               renderCurrentSpread();
+            } else {
+              // 本文が未作成の日でもメイン写真を選択可能にする
+              if (!pkg.diaries) pkg.diaries = [];
+              pkg.diaries.push({
+                dateKey: gCurrentDateKey,
+                fullDate: dateDisp.textContent,
+                weather: '快晴',
+                temperature: 22,
+                content: '',
+                kuroComment: '',
+                photo: p.base64,
+                timestamp: Date.now()
+              });
+              renderCurrentSpread();
             }
           };
 
@@ -1577,7 +1671,7 @@
         logs = pkg.recentLogs;
       }
 
-      chatTitle.textContent = `${dateDisp.textContent.replace('（未作成）', '')} の会話`;
+      chatTitle.textContent = `${dateDisp.textContent} の会話`;
       chatBadge.textContent = `${logs.length} 件の会話`;
 
       if (logs.length === 0) {
@@ -1623,17 +1717,31 @@
     diaryTextInput.oninput = () => {
       const pkg = gPackageData;
       if (!pkg) return;
-      let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
-      if (diary) {
+      if (!pkg.diaries) pkg.diaries = [];
+      let diary = pkg.diaries.find(d => d.dateKey === gCurrentDateKey);
+      if (!diary) {
+        diary = {
+          dateKey: gCurrentDateKey,
+          fullDate: document.getElementById('diary-full-date-disp').textContent,
+          weather: '快晴',
+          temperature: 22,
+          content: diaryTextInput.value,
+          kuroComment: '',
+          photo: null,
+          timestamp: Date.now()
+        };
+        pkg.diaries.push(diary);
+      } else {
         diary.content = diaryTextInput.value;
-        diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
       }
+      diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
     };
 
     diaryCommentInput.oninput = () => {
       const pkg = gPackageData;
       if (!pkg) return;
-      let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
+      if (!pkg.diaries) pkg.diaries = [];
+      let diary = pkg.diaries.find(d => d.dateKey === gCurrentDateKey);
       if (diary) diary.kuroComment = diaryCommentInput.value;
     };
 
@@ -1672,6 +1780,7 @@
       const pkg = gPackageData;
       if (!pkg) return;
 
+      // 1. 記憶帳
       memoriesContainer.innerHTML = '';
       const memories = Array.isArray(pkg.memories) ? pkg.memories : [];
       memories.forEach((mem, idx) => {
@@ -1689,6 +1798,31 @@
         memoriesContainer.appendChild(row);
       });
 
+      // 2. 音声認識辞書（言い換えエディター）
+      dictItemsContainer.innerHTML = '';
+      const dictList = Array.isArray(pkg.customDictionary) ? pkg.customDictionary : [
+        { from: "ジムニー, ジェミニ, じぇみに", to: "Gemini" },
+        { from: "チャットGPT, ちゃっとじーぴーてぃー", to: "ChatGPT" },
+        { from: "ボイスボックス, ぼいすぼっくす", to: "VOICEVOX" },
+        { from: "まんほーる, マンニアル, まんはーる", to: "マンホール" }
+      ];
+
+      dictList.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'dict-item-row';
+        row.innerHTML = `
+          <input type="text" class="dict-from-input" value="${item.from || ''}" placeholder="誤認識される言葉（カンマ区切り）">
+          <span class="dict-arrow">➔</span>
+          <input type="text" class="dict-to-input" value="${item.to || ''}" placeholder="変換後">
+          <button type="button" class="btn-mem-clear btn-dict-del" title="このルールを削除" tabindex="-1">✕</button>
+        `;
+        row.querySelector('.btn-dict-del').onclick = () => {
+          row.remove();
+        };
+        dictItemsContainer.appendChild(row);
+      });
+
+      // 3. 設定
       const s = pkg.settings || {};
       const themeLabelMap = {
         'normal': '🌸 ノーマル（サクラピンク）',
@@ -1745,6 +1879,41 @@
       gPackageData.memories = updatedMemories;
       renderMemoriesAndSettingsUI();
       alert("記憶を更新・保存しましたニャン！📌✨\n（空欄にした項目は綺麗に整理されました）");
+    };
+
+    btnAddDictRow.onclick = () => {
+      const fromVal = newDictFrom.value.trim();
+      const toVal = newDictTo.value.trim();
+      if (!fromVal || !toVal) {
+        alert("変換前と変換後の両方を入力してくださいニャ！");
+        return;
+      }
+      const row = document.createElement('div');
+      row.className = 'dict-item-row';
+      row.innerHTML = `
+        <input type="text" class="dict-from-input" value="${fromVal}">
+        <span class="dict-arrow">➔</span>
+        <input type="text" class="dict-to-input" value="${toVal}">
+        <button type="button" class="btn-mem-clear btn-dict-del" title="このルールを削除" tabindex="-1">✕</button>
+      `;
+      row.querySelector('.btn-dict-del').onclick = () => row.remove();
+      dictItemsContainer.appendChild(row);
+      newDictFrom.value = '';
+      newDictTo.value = '';
+    };
+
+    btnSaveDictionary.onclick = () => {
+      const rows = dictItemsContainer.querySelectorAll('.dict-item-row');
+      const updatedDict = [];
+      rows.forEach(r => {
+        const f = r.querySelector('.dict-from-input')?.value.trim();
+        const t = r.querySelector('.dict-to-input')?.value.trim();
+        if (f && t) {
+          updatedDict.push({ from: f, to: t });
+        }
+      });
+      gPackageData.customDictionary = updatedDict;
+      alert(`音声言い換え辞書（${updatedDict.length}項目）を保存しましたニャン！🗣️✨\n上の「💾 スマホに戻す保存」を押してスマホに読み込ませれば、即座に反映されます！`);
     };
 
     async function compressBase64Image(base64Str, maxDimension = 320, quality = 0.50) {
@@ -1823,7 +1992,7 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      alert(`【保存完了】\n「${filename}」を書き出しました！\n\nスマホの設定画面で「📁 ファイル読込」からこのファイルを選ぶと、推敲した日記や記憶がそのまま反映されます！\n（※スマホ側でおしゃべりした最新の会話ログは安全に保護され、消えることはありません！）`);
+      alert(`【保存完了】\n「${filename}」を書き出しました！\n\nスマホの設定画面で「📁 ファイル読込」からこのファイルを選ぶと、推敲した日記・記憶・音声認識辞書がそのまま反映されます！\n（※スマホ側でおしゃべりした最新の会話ログは安全に保護され、消えることはありません！）`);
     };
 
     btnPrintPage.onclick = () => window.print();
