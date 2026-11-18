@@ -1,18 +1,19 @@
-// [稼働Ver 1.1.0 作業版 Rev.13] Tailscale経由通信に完全最適化したローカルTTS待機時間(3500ms)適用版
+// [作業版 Rev.2] 絵日記写真の日付境界完全厳格化（写真プール別日混入バグ根絶・当日撮影写真のみ厳格抽出）
 /* ==========================================================================
-   AIペット 共通対話基盤エンジンOS（core_engine.js）
+   AIペット 共通対話基盤エンジンOS（Rev.2）
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
-   - 【データ独立保護】キャラごとの記憶帳・絵日記・写真プールを混ざらず安全に独立保持
-   - 【位置情報2系統完全分離】ヘッダー表示用（cleanCityOnly: 市名のみ）＆ 対話・検索用（detailedTownArea: 町名付近＋GPS座標）
-   - 【絵日記写真日付完全独立】写真のない日に過去の日付の写真が勝手に引き継がれる現象を物理的に完全遮断
-   - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
-   - 【TTSハイブリッド・自動フォールバック】Tailscale/PCローカル爆速合成（最優先）➔ 未起動・外出時は自動でクラウド合成へフェイルオーバー
+   - 【絵日記写真日付完全厳格化】写真保存時に日付キーを完全バインドし、別日への写真混入を物理的に根絶
+   - 【当日写真厳格フィルタ】写真プール取得時に撮影日を厳密照合し、他日の写真の混入を100%遮断
+   - 【写真原本エクスポート完全化】ストレージお掃除原本に本文・ひとことを完全保持しビューワー完全連携
+   - 【動的音声認識辞書エンジン新設】PCビューワーで登録・編集したカスタム単語辞書を動的適用
    - 【Tailscale/ローカル直結対応】ホスト自動判定＆3500ms最適待機によりスマホ経由でもPC爆速GPU/CPU合成を100%完走
+   - 【TTSハイブリッド・自動フォールバック】Tailscale/PCローカル（最優先）➔ クラウド合成へフェイルオーバー
+   - 【位置情報2系統完全分離】ヘッダー表示用（cleanCityOnly）＆ 対話・検索用（detailedTownArea）
+   - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
    - 【TTSレート制限(429)防護壁】クラウド利用時の429検知時クールダウンタイマー＆安全キューイング機構維持
    - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
    - 【PC逆インポート安全防護壁】PCから戻した大きな画像によるスマホ容量パンクを自動再スリム化で完全防御
-   - 【非破壊ストレージ大掃除】原本JSONを強制ダウンロード後に安全に3〜5KB化＆重複完全排除
    - 【4.0MB自動監視アラート】4MB到達時にPCバックアップを優しく促す安全センサー常時稼働
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶＆豊かな元祖ゴロゴロ音
    - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
@@ -185,7 +186,7 @@ const TimeProvider = {
         spokenClock: `いまは、${hours}時${minutes === 0 ? 'ちょうど' : minutes + '分'}だ${clockSuffix}`,
         spokenDate: `きょうは、${month}月${date}日、${dayOfWeek}曜日だ${suffix}`,
         clockDisplay: `いまは ${hours}時${pad(minutes)}分 だ${clockSuffix}`,
-        dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek曜日}) だ${suffix}`,
+        dateDisplay: `きょうは ${month}月${date}日 (${dayOfWeek}曜日) だ${suffix}`,
         isLateNight, isEvening, lifeLogKey, lifeFullDate
       };
     } catch (e) {
@@ -262,7 +263,7 @@ const TimeProvider = {
 };
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（Tailscale/PCローカル優先＆クラウドフォールバック）
+   MODULE 1: 音声合成＆音声認識エンジン（動的カスタム辞書統合版）
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -458,8 +459,24 @@ class AudioSpeechEngine {
   }
 
   correctSpeechInput(text) {
+    if (!text) return "";
     const cur = getCurChar();
-    return cur.correctSpeechInput ? cur.correctSpeechInput(text) : text;
+    let t = cur.correctSpeechInput ? cur.correctSpeechInput(text) : text;
+
+    const customDict = StorageManager.loadCustomDictionary();
+    if (Array.isArray(customDict) && customDict.length > 0) {
+      customDict.forEach(item => {
+        if (item && item.from && item.to) {
+          const words = item.from.split(/[,、\s]+/).map(w => w.trim()).filter(Boolean);
+          if (words.length > 0) {
+            const pattern = new RegExp(`(?:${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gu');
+            t = t.replace(pattern, item.to);
+          }
+        }
+      });
+    }
+
+    return t;
   }
 
   _convertAllNumbersToKana(text) {
@@ -527,7 +544,6 @@ class AudioSpeechEngine {
     if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
   }
 
-  // ★ ハイブリッド音声生成エンジン（Tailscale/PCローカル直結最優先 ➔ クラウド自動フォールバック）
   _getVoicevoxBlobUrl(text, speakerId) {
     const key = `${speakerId}_${text}`;
     if (this.blobUrlCache.has(key)) {
@@ -540,12 +556,8 @@ class AudioSpeechEngine {
 
       const t0 = performance.now();
 
-      // ========================================================
-      // 【第1優先】Tailscale / PCローカル直結 超高速音声合成の試行
-      // ========================================================
       let localBaseUrl = (localStorage.getItem('kuro_local_tts_url') || localStorage.getItem('kuro_ngrok_url') || '').trim().replace(/\/+$/, '');
 
-      // 未設定時：アクセス元のホスト名（Tailscale IP や localhost）からポート50021を自動検出
       if (!localBaseUrl && typeof window !== 'undefined' && window.location && window.location.hostname) {
         const hn = window.location.hostname;
         if (hn && hn !== 'github.io' && !hn.endsWith('.github.io')) {
@@ -556,18 +568,15 @@ class AudioSpeechEngine {
         localBaseUrl = 'http://localhost:50021';
       }
 
-      let localSucceeded = false;
       let localBlobUrl = null;
 
       if (localBaseUrl) {
         const localAbortCtrl = new AbortController();
-        // ★ Tailscale経由通信とPCのGPU/CPU合成完走に完全最適化した3.5秒（3500ms）待機タイマー
         const localTimeoutId = setTimeout(() => localAbortCtrl.abort(), 3500);
 
         try {
           Logger.log(`[TTS] ⚡ PCローカル直結試行 (${localBaseUrl}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
 
-          // 1. audio_query 生成（純粋なローカルVOICEVOXクエリ）
           const qUrl = `${localBaseUrl}/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
           const qRes = await fetch(qUrl, {
             method: 'POST',
@@ -577,13 +586,10 @@ class AudioSpeechEngine {
           if (!qRes.ok) throw new Error(`Query HTTP ${qRes.status}`);
           const qJson = await qRes.json();
 
-          // 2. synthesis 音声合成
           const sUrl = `${localBaseUrl}/synthesis?speaker=${speakerId}`;
           const sRes = await fetch(sUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(qJson),
             signal: localAbortCtrl.signal
           });
@@ -594,7 +600,6 @@ class AudioSpeechEngine {
           clearTimeout(localTimeoutId);
           localBlobUrl = URL.createObjectURL(blob);
           this.blobUrlCache.set(key, localBlobUrl);
-          localSucceeded = true;
 
           const ms = Math.round(performance.now() - t0);
           Logger.log(`[TTS] ⚡ PCローカル合成成功 (${ms}ms) [Tailscale/ローカル直結]`, "success");
@@ -606,9 +611,6 @@ class AudioSpeechEngine {
         }
       }
 
-      // ========================================================
-      // 【第2優先】VOICEVOX クラウド API (自動フォールバック)
-      // ========================================================
       const now = Date.now();
       if (now < this.rateLimitCooldownUntil) {
         const remainingSec = Math.ceil((this.rateLimitCooldownUntil - now) / 1000);
@@ -896,7 +898,7 @@ class AudioSpeechEngine {
       if (!rawText) return;
 
       const resultText = this.correctSpeechInput(rawText);
-      Logger.log(`[Mic] 🎤 音声認識：「${rawText}」➔ 補正後:「${resultText}」`, "info");
+      Logger.log(`[Mic] 🎤 音声認識：「${rawText}」➔ 辞書補正後:「${resultText}」`, "info");
 
       if (/(?:ストップ|やめて|とまって|止めて|タイマー.*(?:止めて|やめて|消して)|アラーム.*(?:止めて|消して))/.test(resultText)) {
         AppCore.cancelKitchenTimer(true);
@@ -1078,13 +1080,21 @@ const LocationProvider = {
 };
 
 /* ==========================================================================
-   MODULE 3: ストレージ管理 ＆ 非破壊データ保護 ＆ 恒久大掃除エンジン
+   MODULE 3: ストレージ管理 ＆ 非破壊データ保護 ＆ カスタム辞書エンジン
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
   DIARIES:  'kuro_data_diaries',
-  RECENT_LOGS: 'kuro_recent_chat_logs'
+  RECENT_LOGS: 'kuro_recent_chat_logs',
+  CUSTOM_DICT: 'kuro_custom_dictionary'
 };
+
+const DEFAULT_CUSTOM_DICTIONARY = [
+  { from: "ジムニー, ジェミニ, じぇみに", to: "Gemini" },
+  { from: "チャットGPT, ちゃっとじーぴーてぃー", to: "ChatGPT" },
+  { from: "ボイスボックス, ぼいすぼっくす", to: "VOICEVOX" },
+  { from: "まんほーる, マンニアル, まんはーる", to: "マンホール" }
+];
 
 const StorageManager = {
   defaultGlassesCoordsKuro: {
@@ -1174,6 +1184,20 @@ const StorageManager = {
       metaMB: toMB(metaBytes), metaPct: Math.min(100, Math.round((metaBytes / (limitMB * 1024 * 1024)) * 100)),
       isWarning: percent >= 75, isDanger: percent >= 90
     };
+  },
+
+  loadCustomDictionary() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(DATA_KEYS.CUSTOM_DICT));
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch(e) {}
+    return DEFAULT_CUSTOM_DICTIONARY;
+  },
+
+  saveCustomDictionary(dict) {
+    if (!Array.isArray(dict)) return;
+    localStorage.setItem(DATA_KEYS.CUSTOM_DICT, JSON.stringify(dict));
+    Logger.log(`[Dict] 🗣️ 音声認識カスタム辞書を保存（${dict.length}項目）`, "info");
   },
 
   loadGlassesCoords() {
@@ -1299,17 +1323,26 @@ const StorageManager = {
     try { return JSON.parse(localStorage.getItem(dailyKey)) || []; } catch(e) { return []; }
   },
 
-  addPhotoToDailyPool(photoBase64, userComment = "") {
+  // ★重要：対象日付（customDateKey）を明示的に受け取り、別日プールへの混入を物理遮断
+  addPhotoToDailyPool(photoBase64, userComment = "", customDateKey = null) {
+    if (!photoBase64) return;
     const timeInfo = TimeProvider.getCurrentInfo();
+    const targetDateKey = customDateKey || timeInfo.lifeLogKey;
     const activeId = getCurChar().id;
-    const key = activeId === 'kuro' ? `kuro_daily_photos_${timeInfo.lifeLogKey}` : `kuro_daily_photos_${activeId}_${timeInfo.lifeLogKey}`;
+    const key = activeId === 'kuro' ? `kuro_daily_photos_${targetDateKey}` : `kuro_daily_photos_${activeId}_${targetDateKey}`;
     try {
       let pool = JSON.parse(localStorage.getItem(key) || '[]');
       const exists = pool.some(p => p.base64 === photoBase64);
       if (!exists) {
-        pool.push({ base64: photoBase64, comment: userComment, time: timeInfo.clock, timestamp: Date.now() });
+        pool.push({
+          base64: photoBase64,
+          comment: userComment,
+          time: timeInfo.clock,
+          timestamp: Date.now(),
+          dateKey: targetDateKey
+        });
         localStorage.setItem(key, JSON.stringify(pool.slice(-12)));
-        Logger.log(`[Storage] 写真プール保存完了 (本日:${pool.length}枚)`, "info");
+        Logger.log(`[Storage] 写真プール保存完了 (${targetDateKey} / 計:${pool.length}枚)`, "info");
       }
     } catch(e) {}
   },
@@ -1333,16 +1366,20 @@ const StorageManager = {
     } catch(e) { return false; }
   },
 
+  // ★重要：指定日の日付（lifeDateKey）に撮影された写真のみを厳密抽出（他日の混入完全排除）
   getDailyPhotoPool(lifeDateKey) {
     const activeId = getCurChar().id;
     const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
     try {
       let pool = JSON.parse(localStorage.getItem(key)) || [];
+      // 写真データにdateKeyが存在する場合、対象日と一致するもののみを厳格フィルタ
+      pool = pool.filter(p => !p.dateKey || p.dateKey === lifeDateKey);
+
       if (pool.length === 0) {
         const diaries = this.loadAllDiaries();
         const d = diaries.find(item => item.dateKey === lifeDateKey);
         if (d && d.photo) {
-          pool = [{ base64: d.photo, comment: "メイン写真", time: "12:00", timestamp: d.timestamp || Date.now() }];
+          pool = [{ base64: d.photo, comment: "メイン写真", time: "12:00", timestamp: d.timestamp || Date.now(), dateKey: lifeDateKey }];
           localStorage.setItem(key, JSON.stringify(pool));
         }
       }
@@ -1441,7 +1478,8 @@ const StorageManager = {
 
     let targetPhoto = photoData || (idx >= 0 ? list[idx].photo : null) || null;
     if (targetPhoto) {
-      this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真");
+      // ★修正：第3引数に対象日付（dateKey）を渡し、過去日記保存時に今日へ写真が紛れ込むのを物理遮断
+      this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真", dateKey);
     }
 
     const diaryData = {
@@ -1466,7 +1504,7 @@ const StorageManager = {
 
   attachPhotoToTodayDiary(photoBase64) {
     const timeInfo = TimeProvider.getCurrentInfo();
-    this.addPhotoToDailyPool(photoBase64, "写真を見せた記録");
+    this.addPhotoToDailyPool(photoBase64, "写真を見せた記録", timeInfo.lifeLogKey);
     let list = this.loadAllDiaries();
     const idx = list.findIndex(d => d.dateKey === timeInfo.lifeLogKey);
     const defTxt = getCurChar().id === 'shiro'
@@ -1601,7 +1639,8 @@ const StorageManager = {
       characterId: getCurChar().id,
       exportedAt: now.toLocaleString('ja-JP'),
       dailyPhotoPools: allDailyPhotos,
-      diaries: this.loadAllDiaries().map(d => ({ dateKey: d.dateKey, fullDate: d.fullDate, photo: d.photo }))
+      diaries: this.loadAllDiaries(),
+      customDictionary: this.loadCustomDictionary()
     };
     const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1612,7 +1651,7 @@ const StorageManager = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    Logger.log(`[Backup] 📷 高画質写真アルバム原本の書き出し完了`, "success");
+    Logger.log(`[Backup] 📷 高画質写真アルバム原本の書き出し完了（日記本文・辞書完全保持）`, "success");
   },
 
   downloadDataPackage() {
@@ -1627,13 +1666,14 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.0.0",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.1",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
       recentLogs: this.loadRecentTimelineLogs(),
       dailyPhotoPools: allDailyPhotos,
       dailyChatLogs: allDailyLogs,
+      customDictionary: this.loadCustomDictionary(),
       settings: {
         activeCharacter: localStorage.getItem('kuro_active_character') || 'kuro',
         speakerId: localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10),
@@ -1666,6 +1706,10 @@ const StorageManager = {
     if (!data || typeof data !== 'object') throw new Error("無効なバックアップデータです。");
 
     if (Array.isArray(data.memories)) this.saveMemories(data.memories);
+
+    if (Array.isArray(data.customDictionary)) {
+      this.saveCustomDictionary(data.customDictionary);
+    }
 
     if (Array.isArray(data.diaries)) {
       const sanitizedDiaries = data.diaries.map(d => {
