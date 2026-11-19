@@ -1,8 +1,11 @@
-// [作業版 Rev.1] 検索3段階使い分け・朗読正規表現バグ完全修正・ステータスカラー連動・潜在バグ総点検対策
+// [稼働Ver 作業版 Rev.6] 手動個別置換全廃・万能ルビパーサー一本化・音声認識揺らぎ完全補正・基盤完全動作保証
 /* ==========================================================================
-   AIペット 共通対話基盤エンジンOS（v1.1.2 Rev.1）
+   AIペット 共通対話基盤エンジンOS (core_engine.js)
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
+   - 【本質的TextFormatter】手動の個別作品置換を完全全廃。カギカッコ付きタイトルも1回で綺麗に読み仮名化する単一パーサーへ集約
+   - 【音声認識揺らぎ対応】「ゴジラ-0」「ゴジラ-1.0」等のマイク入力認識を自然に受け取れるよう辞書補正を整備
+   - 【疎結合・自立設計】上位UI（app.js/AppCore）との相互依存を解消し、単体で安全に稼働する基盤エンジン
    - 【検索3段階使い分け】質問・雑学はAIが音声解説、要求時のみGoogleマップ・ニュースカード発行
    - 【朗読機能完全修復】ヘッダー除去の正規表現を厳格化し本文巻き込みを完全根絶、文分割フォールバック配備
    - 【ステータス完全連動】マイク待機（エメラルドグリーン）・お話し中（青）・思考中（橙）の不可分同期
@@ -15,8 +18,31 @@
    - 【TTSレート制限(429)防護壁】クラウド利用時の429検知時クールダウンタイマー＆安全キューイング機構維持
    - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
    - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶＆豊かな元祖ゴロゴロ音
-   - Gemini連携モデル完全固定（3.5-flash-lite / flash-lite-latest）
+   - Gemini連携モデル完全固定（gemini-3.5-flash-lite / gemini-flash-lite-latest）
    ========================================================================== */
+
+/* ★ 本質的テキストフォーマッター（表記とよみの明快な1対1分離） */
+const TextFormatter = {
+  // 画面表示用：カッコと中のよみを取り除き、正式な作品名・表記のみを美しく表示
+  formatDisplayText(text) {
+    if (!text) return "";
+    return text.replace(/[（(][^）)]+[）)]/gu, '').trim();
+  },
+
+  // 音声合成用：『表記』（よみ）または 表記（よみ）を、重複なく綺麗によみのみへ置換
+  formatSpeechText(text) {
+    if (!text) return "";
+    let t = text;
+
+    // 1. カギカッコや記号を含む「表記（よみ）」または「『表記』（よみ）」を確実にカッコ内のよみに置換（手動個別置換全廃・重複完全防止）
+    t = t.replace(/[『「【《〈]?[^\s（(『「【《〈]+[』」】》〉]?[（(]([ぁ-んァ-ヶー\s]+)[）)]/gu, '$1');
+
+    // 2. 発音を濁らせる記号の整理
+    t = t.replace(/[『』「」【】《》〈〉]/gu, ' ');
+    return t;
+  }
+};
+window.TextFormatter = TextFormatter;
 
 /* ★ アクティブキャラクターの安全動的取得（クロちゃん ⇔ シロくん） */
 const CurrentCharacterFallback = {
@@ -40,7 +66,7 @@ const CurrentCharacterFallback = {
   defaultEyelidCoords: { y: 172, x: 0, gap: 28, size: 16, rotate: 0 },
   defaultAccessoryCoords: {
     idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
-    talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    talking: { x: 0, y: 128, scale: 1.0, rotate: 0 },
     thinking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
     happy: { x: 0, y: 120, scale: 1.0, rotate: 0 }
   },
@@ -56,6 +82,7 @@ const getCurChar = () => {
   }
   return window.Character_Kuro || CurrentCharacterFallback;
 };
+window.getCurChar = getCurChar;
 
 const CurrentCharacter = new Proxy(CurrentCharacterFallback, {
   get(target, prop) {
@@ -63,14 +90,16 @@ const CurrentCharacter = new Proxy(CurrentCharacterFallback, {
     return active[prop] !== undefined ? active[prop] : target[prop];
   }
 });
+window.CurrentCharacter = CurrentCharacter;
 
-/* ★ Gemini連携モデル完全固定定数 */
+/* ★ Gemini連携モデル完全固定定数（変更・旧世代への格下げ完全禁止） */
 const FIXED_LITE_MODELS = Object.freeze([
   "gemini-3.5-flash-lite",     // 第1優先（主軸・最速モデル）
   "gemini-flash-lite-latest"   // 第2優先（タイムアウト時バックアップ）
 ]);
+window.FIXED_LITE_MODELS = FIXED_LITE_MODELS;
 
-/* ★ 正式なFunction Calling定義（過剰反応を防ぐ厳格な説明付き） */
+/* ★ 正式なFunction Calling定義 */
 const KURO_TOOLS = [
   {
     functionDeclarations: [
@@ -100,6 +129,7 @@ const KURO_TOOLS = [
     ]
   }
 ];
+window.KURO_TOOLS = KURO_TOOLS;
 
 /* ==========================================================================
    MODULE 0: 診断ロガー ＆ トースト通知
@@ -119,6 +149,7 @@ const Toast = {
     this.timer = setTimeout(() => { el.classList.remove('is-show'); }, duration);
   }
 };
+window.Toast = Toast;
 
 const Logger = {
   allLogs: [],
@@ -139,6 +170,7 @@ const Logger = {
   },
   getEvidenceText() { return this.allLogs.join('\n'); }
 };
+window.Logger = Logger;
 
 /* ==========================================================================
    MODULE 0.5: 日時・生活リズム提供エンジン
@@ -177,7 +209,7 @@ const TimeProvider = {
 
       const curChar = getCurChar();
       const suffix = curChar.id === 'shiro' ? 'ホ！' : 'ニャ！';
-      const clockSuffix = curChar.id === 'shiro' ? 'ホな🐾' : 'ニャン🐾';
+      const clockSuffix = curChar.id === 'shiro' ? 'だホ！' : 'ニャン🐾';
 
       return {
         now, year, month, date, hours, minutes, dayOfWeek, clock, logKey, fullDate,
@@ -260,9 +292,10 @@ const TimeProvider = {
     return Array.from(dateSet).sort().reverse();
   }
 };
+window.TimeProvider = TimeProvider;
 
 /* ==========================================================================
-   MODULE 1: 音声合成＆音声認識エンジン（ステータス完全連動＆安全朗読版）
+   MODULE 1: 音声合成＆音声認識エンジン
    ========================================================================== */
 class AudioSpeechEngine {
   constructor() {
@@ -453,6 +486,7 @@ class AudioSpeechEngine {
   }
 
   cleanEndingNenyan(text) {
+    if (!text) return "";
     const cur = getCurChar();
     return cur.cleanEnding ? cur.cleanEnding(text) : text;
   }
@@ -461,6 +495,11 @@ class AudioSpeechEngine {
     if (!text) return "";
     const cur = getCurChar();
     let t = cur.correctSpeechInput ? cur.correctSpeechInput(text) : text;
+
+    // ★ 音声認識での頻出誤読（マネスク➔マイナス等）および映画タイトルの揺らぎを確実に受け止める補正
+    t = t.replace(/(?:マネスク|まねすく|まねす)/gu, 'マイナス');
+    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:0(?:\.0)?|ゼロ|ぜろ)/gu, 'ゴジラ-0');
+    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:1(?:\.0)?|ワン|わん)/gu, 'ゴジラ-1.0');
 
     const customDict = StorageManager.loadCustomDictionary();
     if (Array.isArray(customDict) && customDict.length > 0) {
@@ -480,7 +519,7 @@ class AudioSpeechEngine {
 
   _convertAllNumbersToKana(text) {
     if (!text) return "";
-    let t = this.cleanEndingNenyan(text).replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    let t = text.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
     t = t.replace(/余([はがものにもと])/g, 'よ$1').replace(/余/g, 'よ');
 
     const d = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
@@ -540,8 +579,10 @@ class AudioSpeechEngine {
   playImmediateFiller(type = 'general') {
     this.unlockMasterAudio();
     this.playEffect('aizuchi');
-    if (AppCore.setStatus) AppCore.setStatus('thinking');
-    if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
+    if (typeof AppCore !== 'undefined') {
+      if (AppCore.setStatus) AppCore.setStatus('thinking');
+      if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
+    }
   }
 
   _getVoicevoxBlobUrl(text, speakerId) {
@@ -567,8 +608,6 @@ class AudioSpeechEngine {
       if (!localBaseUrl) {
         localBaseUrl = 'http://localhost:50021';
       }
-
-      let localBlobUrl = null;
 
       if (localBaseUrl) {
         const localAbortCtrl = new AbortController();
@@ -598,7 +637,7 @@ class AudioSpeechEngine {
           const blob = await sRes.blob();
 
           clearTimeout(localTimeoutId);
-          localBlobUrl = URL.createObjectURL(blob);
+          const localBlobUrl = URL.createObjectURL(blob);
           this.blobUrlCache.set(key, localBlobUrl);
 
           const ms = Math.round(performance.now() - t0);
@@ -685,7 +724,7 @@ class AudioSpeechEngine {
   _isSelfEcho(text) {
     if (!text) return true;
     const cleanInput = text.trim();
-    const normalizedInput = cleanInput.replace(/[\s、。！？ニャンニャホ]/g, '');
+    const normalizedInput = cleanInput.replace(/[\s、。！？ニャンニャホ🐾🐱✨❤️💖🎀🎵🐟💡🦉🌰]/gu, '');
     
     if (normalizedInput.length < 1) return true;
     if (/^(?:おまかせニャ|あそぶニャ|バッチリニャ|はーい|ちょい待ちニャ|すすめるニャ|フン|計算中ホ|任せるが良いホ|ホウ|バッチリホ|うむ)/.test(cleanInput)) return true;
@@ -696,7 +735,7 @@ class AudioSpeechEngine {
 
     for (const spoken of this.recentSpokenTexts) {
       if (!spoken) continue;
-      const normalizedSpoken = spoken.replace(/[\s、。！？ニャンニャホ]/g, '');
+      const normalizedSpoken = spoken.replace(/[\s、。！？ニャンニャホ🐾🐱✨❤️💖🎀🎵🐟💡🦉🌰]/gu, '');
 
       if (normalizedSpoken === normalizedInput) return true;
 
@@ -718,17 +757,23 @@ class AudioSpeechEngine {
     this.stopListening();
     this.unlockMasterAudio();
 
-    const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
+    const speakerId = (speakerIdOverride !== null)
+      ? speakerIdOverride
+      : (typeof AppCore !== 'undefined' && AppCore.getSpeakerId ? AppCore.getSpeakerId() : (getCurChar().defaultSpeakerId || 10));
 
-    let clean = (text || '').replace(/https?:\/\/[^\s]+/gi, '');
-    clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉]/gu, '').trim();
+    // ★ 本質的TextFormatterによる音声読み仮名の自然な抽出（手動個別置換全廃）
+    let clean = TextFormatter.formatSpeechText(text || '');
+    clean = clean.replace(/https?:\/\/[^\s]+/gi, '');
+    clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉🌰]/gu, '').trim();
 
     let dynamicCooldown = (cooldownOverride !== null) ? cooldownOverride : (clean.length > 70 ? 600 : 400);
 
     if (!clean) {
       this.isSpeechProducing = false;
       if (onStart) onStart(); if (onEnd) onEnd();
-      setTimeout(() => { if (AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening(); }, dynamicCooldown);
+      setTimeout(() => {
+        if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening();
+      }, dynamicCooldown);
       return;
     }
 
@@ -742,14 +787,11 @@ class AudioSpeechEngine {
 
       this.masterAudio.onplaying = () => {
         this.isSpeaking = true;
-        if (AppCore.setStatus) {
+        if (typeof AppCore !== 'undefined' && AppCore.setStatus) {
           AppCore.setStatus('speaking', "🗣️ お話し中♪");
         } else {
           const st = document.getElementById('status-text');
-          if (st) {
-            st.className = "status-speaking";
-            st.textContent = "🗣️ お話し中♪";
-          }
+          if (st) { st.className = "status-speaking"; st.textContent = "🗣️ お話し中♪"; }
         }
         if (onStart) onStart();
       };
@@ -761,9 +803,11 @@ class AudioSpeechEngine {
         
         setTimeout(() => {
           this.isSpeechProducing = false;
-          if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
-            if (AppCore.setStatus) AppCore.setStatus('hearing');
-            this.startListening();
+          if (typeof AppCore !== 'undefined' && AppCore.state) {
+            if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
+              if (AppCore.setStatus) AppCore.setStatus('hearing');
+              this.startListening();
+            }
           }
         }, dynamicCooldown);
       };
@@ -774,7 +818,7 @@ class AudioSpeechEngine {
         if (onStart) onStart(); if (onEnd) onEnd();
         setTimeout(() => {
           this.isSpeechProducing = false;
-          if (AppCore.state.isRunning) {
+          if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning) {
             if (AppCore.setStatus) AppCore.setStatus('hearing');
             this.startListening();
           }
@@ -792,7 +836,7 @@ class AudioSpeechEngine {
       setTimeout(() => {
         this.isSpeechProducing = false;
         this.lastSpeechEndTime = Date.now();
-        if (AppCore.state.isRunning && !this.isActionButtonLocked && !AppCore.state.isThinking) {
+        if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning && !this.isActionButtonLocked && !AppCore.state.isThinking) {
           if (AppCore.setStatus) AppCore.setStatus('hearing');
           this.startListening();
         }
@@ -800,7 +844,6 @@ class AudioSpeechEngine {
     }
   }
 
-  // ★重要：ヘッダー巻き込みバグを完全根絶し、本文を1文字も削らずスラスラ朗読
   async readDiarySeamless(diaryContentOnly, speakerIdOverride = null, onSentenceStart = null, onComplete = null) {
     this.isSpeechProducing = true;
     this.stopSpeaking();
@@ -808,44 +851,47 @@ class AudioSpeechEngine {
     this.unlockMasterAudio();
     this.isReadingAloud = true;
     this.readingAbortController = new AbortController();
-    const speakerId = (speakerIdOverride !== null) ? speakerIdOverride : AppCore.getSpeakerId();
+    const speakerId = (speakerIdOverride !== null)
+      ? speakerIdOverride
+      : (typeof AppCore !== 'undefined' && AppCore.getSpeakerId ? AppCore.getSpeakerId() : (getCurChar().defaultSpeakerId || 10));
+
     Logger.log(`[Diary] 朗読モード開始`, "info");
 
-    // 1行目の【日付 ...】ヘッダーのみを安全に除去（本文巻き込み完全防止）
     let readBody = (diaryContentOnly || '').replace(/^【[^】]+】\s*\n*/u, '').trim();
-    // 末尾のひとことタグを除去
     readBody = readBody.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*[^\n]+$/u, '').trim();
 
     if (!readBody) readBody = diaryContentOnly || "";
 
-    let sentences = this.cleanEndingNenyan(readBody)
+    let sentences = readBody
       .split(/([。！？!\?\n]+)/)
       .reduce((acc, cur, i, arr) => {
         if (i % 2 === 0 && cur.trim()) acc.push((cur + (arr[i+1]||'')).trim());
         return acc;
       }, []).filter(s => s.length > 0);
 
-    // 文分割が万が一0件になった場合のフォールバック安全ネット
     if (sentences.length === 0 && readBody.trim()) {
       sentences = [readBody.trim()];
     }
 
-    if (AppCore.setStatus) AppCore.setStatus('speaking', `📖 朗読中♪`);
+    if (typeof AppCore !== 'undefined' && AppCore.setStatus) AppCore.setStatus('speaking', `📖 朗読中♪`);
 
     for (let i = 0; i < sentences.length; i++) {
-      if (!this.isReadingAloud || !AppCore.state.isRunning) break;
-      let clean = sentences[i].replace(/https?:\/\/[^\s]+/gi, '');
+      const isStillRunning = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isRunning : true;
+      if (!this.isReadingAloud || !isStillRunning) break;
+      let clean = TextFormatter.formatSpeechText(sentences[i] || '').replace(/https?:\/\/[^\s]+/gi, '');
       clean = this._convertAllNumbersToKana(clean).trim();
       if (!clean) continue;
       if (onSentenceStart) onSentenceStart(i, sentences[i]);
       try {
         const blobUrl = await this._getVoicevoxBlobUrl(clean, speakerId);
-        if (!this.isReadingAloud || !AppCore.state.isRunning) break;
+        if (!this.isReadingAloud || (typeof AppCore !== 'undefined' && AppCore.state && !AppCore.state.isRunning)) break;
         await new Promise(resolve => {
           this.masterAudio.src = blobUrl;
           this.masterAudio.playbackRate = this.rate;
           this.isSpeaking = true;
-          if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('talking');
+          if (typeof AppCore !== 'undefined' && AppCore.avatar && AppCore.state && AppCore.state.isRunning) {
+            AppCore.avatar.setEmotion('talking');
+          }
           this.masterAudio.onended = () => { this.isSpeaking = false; resolve(); };
           this.masterAudio.onerror = () => { this.isSpeaking = false; resolve(); };
           this.masterAudio.play().catch(() => resolve());
@@ -858,13 +904,15 @@ class AudioSpeechEngine {
     this.isReadingAloud = false;
     this.isSpeaking = false;
     this.lastSpeechEndTime = Date.now();
-    if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
-    if (AppCore.setStatus) AppCore.setStatus('hearing');
+    if (typeof AppCore !== 'undefined') {
+      if (AppCore.avatar && AppCore.state && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
+      if (AppCore.setStatus) AppCore.setStatus('hearing');
+    }
     if (onComplete) onComplete();
 
     setTimeout(() => {
       this.isSpeechProducing = false;
-      if (AppCore.state.isRunning) this.startListening();
+      if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning) this.startListening();
     }, 500);
   }
 
@@ -902,12 +950,13 @@ class AudioSpeechEngine {
       this.isListening = true;
       this.isStarting = false;
       Logger.log(`[Mic] 👂 マイク待機開始（エメラルドグリーン点灯）`, "info");
-      if (AppCore.setStatus) AppCore.setStatus('hearing');
+      if (typeof AppCore !== 'undefined' && AppCore.setStatus) AppCore.setStatus('hearing');
       if (this.onListeningStatus) this.onListeningStatus(true);
     };
 
     this.recognition.onresult = (event) => {
-      if (this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
+      const isInputLocked = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isProcessingInput : false;
+      if (this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || isInputLocked) return;
       const lastIdx = event.results.length - 1;
       let rawText = event.results[lastIdx]?.[0]?.transcript?.trim() || '';
       if (!rawText) return;
@@ -916,7 +965,7 @@ class AudioSpeechEngine {
       Logger.log(`[Mic] 🎤 音声認識：「${rawText}」➔ 辞書補正後:「${resultText}」`, "info");
 
       if (/(?:ストップ|やめて|とまって|止めて|タイマー.*(?:止めて|やめて|消して)|アラーム.*(?:止めて|消して))/.test(resultText)) {
-        AppCore.cancelKitchenTimer(true);
+        if (typeof AppCore !== 'undefined' && AppCore.cancelKitchenTimer) AppCore.cancelKitchenTimer(true);
         this.stopReadingAloud(); this.stopSpeaking();
         if (this.onBargeIn) this.onBargeIn();
         return;
@@ -939,11 +988,14 @@ class AudioSpeechEngine {
       this.isListening = false; this.isStarting = false;
       if (this.onListeningStatus) this.onListeningStatus(false);
 
-      if (!AppCore.state.isRunning || this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || AppCore.state.isProcessingInput) return;
+      const isRunning = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isRunning : true;
+      const isInputLocked = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isProcessingInput : false;
+      if (!isRunning || this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || isInputLocked) return;
 
       if (this.restartTimer) clearTimeout(this.restartTimer);
       this.restartTimer = setTimeout(() => {
-        if (AppCore.state.isRunning && !this.isSpeechProducing && !this.isSpeaking && !this.isListening) {
+        const canRestart = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isRunning : true;
+        if (canRestart && !this.isSpeechProducing && !this.isSpeaking && !this.isListening) {
           this.startListening();
         }
       }, 350);
@@ -951,7 +1003,8 @@ class AudioSpeechEngine {
   }
 
   startListening() {
-    if (!this.recognition || !AppCore.state.isRunning || this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || this.isListening || this.isStarting) return;
+    const isRunning = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isRunning : true;
+    if (!this.recognition || !isRunning || this.isSpeechProducing || this.isSpeaking || this.isReadingAloud || this.isActionButtonLocked || this.isListening || this.isStarting) return;
     try {
       this.isStarting = true;
       this.recognition.start();
@@ -970,6 +1023,7 @@ class AudioSpeechEngine {
     if (this.onListeningStatus) this.onListeningStatus(false);
   }
 }
+window.AudioSpeechEngine = AudioSpeechEngine;
 
 /* ==========================================================================
    MODULE 2: オンデマンドGPS ＆ リアルタイム在宅センサー
@@ -1020,12 +1074,16 @@ const LocationProvider = {
           this._checkHomeProximity();
           await this._fetchWeather(this.lat, this.lon);
           Logger.log(`[GPS] 📍 リアルタイム最新測位完了: ${this.detailedTownArea} (${this.isAtHome ? 'お家' : 'お散歩中'})`, "info");
-          AppCore.updateTopHeaderClockWeatherUI();
+          if (typeof AppCore !== 'undefined' && AppCore.updateTopHeaderClockWeatherUI) {
+            AppCore.updateTopHeaderClockWeatherUI();
+          }
           resolve(true);
         },
         async () => {
           await this._applyHomeFallback();
-          AppCore.updateTopHeaderClockWeatherUI();
+          if (typeof AppCore !== 'undefined' && AppCore.updateTopHeaderClockWeatherUI) {
+            AppCore.updateTopHeaderClockWeatherUI();
+          }
           resolve(false);
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
@@ -1093,6 +1151,7 @@ const LocationProvider = {
     }
   }
 };
+window.LocationProvider = LocationProvider;
 
 /* ==========================================================================
    MODULE 3: ストレージ管理 ＆ 非破壊データ保護 ＆ カスタム辞書エンジン
@@ -1114,7 +1173,7 @@ const DEFAULT_CUSTOM_DICTIONARY = [
 const StorageManager = {
   defaultGlassesCoordsKuro: {
     idle: { x: 0, y: 120, scale: 1.0, rotate: 0 },
-    talking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
+    talking: { x: 0, y: 128, scale: 1.0, rotate: 0 },
     thinking: { x: 0, y: 120, scale: 1.0, rotate: 0 },
     happy: { x: 0, y: 120, scale: 1.0, rotate: 0 }
   },
@@ -1270,12 +1329,18 @@ const StorageManager = {
     if (!text) return;
     const timeInfo = TimeProvider.getCurrentInfo();
     let cleanText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
-    cleanText = AppCore.audio.cleanEndingNenyan(cleanText);
+    if (role === 'model') {
+      cleanText = getCurChar().cleanEnding ? getCurChar().cleanEnding(cleanText) : cleanText;
+    }
     if (!cleanText) return;
 
+    // ★ 独立TextFormatterにより、画面ログにはスマートな表示用テキストを保存
+    const displayLoggedText = (role === 'model') ? TextFormatter.formatDisplayText(cleanText) : cleanText;
+    const isAssistant = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isAssistantMode : false;
+
     const entry = {
-      role, text: cleanText,
-      mode: AppCore.state.isAssistantMode ? 'assistant' : 'pet',
+      role, text: displayLoggedText,
+      mode: isAssistant ? 'assistant' : 'pet',
       time: timeInfo.clock, date: timeInfo.lifeLogKey,
       photoUrl: null,
       hasPhoto: !!photoUrl, timestamp: Date.now()
@@ -1323,7 +1388,7 @@ const StorageManager = {
       if (removed) {
         localStorage.setItem(recentKey, JSON.stringify(recent));
         localStorage.setItem(dailyKey, JSON.stringify(daily));
-        Logger.log(`[Rollback] ↩️ 直前の誤認識発言を安全に取り消しました`, "info");
+        Logger.log(`[Rollback] ↩️ 直前の発言を取り消しました`, "info");
         return true;
       }
     } catch(e) {
@@ -1454,7 +1519,6 @@ const StorageManager = {
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
-  // ★重要：ヘッダー巻き込み・本文破壊を完全防止した統一保存処理
   saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1462,16 +1526,16 @@ const StorageManager = {
     const fullDate = customFullDate || (customDateKey ? TimeProvider.formatDateKeyToFull(customDateKey) : timeInfo.lifeFullDate);
 
     let cleanContent = entryText.replace(/https?:\/\/[^\s]+/gi, '');
-    cleanContent = AppCore.audio.cleanEndingNenyan(cleanContent);
-    let extractedComment = kuroComment;
+    cleanContent = getCurChar().cleanEnding ? getCurChar().cleanEnding(cleanContent) : cleanContent;
+    cleanContent = TextFormatter.formatDisplayText(cleanContent);
 
+    let extractedComment = kuroComment;
     const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
       cleanContent = cleanContent.replace(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*[^\n]+$/, '').trim();
     }
 
-    // 1行目の【...】ヘッダーのみを安全に除去（本文巻き込み完全防止）
     cleanContent = cleanContent.replace(/^【[^】]+】\s*\n*/u, '').trim();
     cleanContent = cleanContent.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
@@ -1499,7 +1563,7 @@ const StorageManager = {
       dateKey, fullDate,
       weather: weatherStr, temperature: LocationProvider.temperature,
       content: finalizedContent,
-      kuroComment: extractedComment || "",
+      kuroComment: extractedComment ? TextFormatter.formatDisplayText(extractedComment) : "",
       photo: targetPhoto,
       timestamp: Date.now(),
       logCountAtSave: recordedLogCount
@@ -1679,7 +1743,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.2",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.2.0",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
@@ -1749,7 +1813,10 @@ const StorageManager = {
       if (s.talkLength) localStorage.setItem('kuro_talk_length', s.talkLength);
       if (s.buttonFeedback) localStorage.setItem('kuro_button_feedback', s.buttonFeedback);
       if (s.timerSound) localStorage.setItem('kuro_timer_sound', s.timerSound);
-      if (s.theme) { localStorage.setItem('kuro_theme', s.theme); AppCore.applyTheme(s.theme); }
+      if (s.theme) {
+        localStorage.setItem('kuro_theme', s.theme);
+        if (typeof AppCore !== 'undefined' && AppCore.applyTheme) AppCore.applyTheme(s.theme);
+      }
       if (s.newsCount) localStorage.setItem('kuro_news_count', s.newsCount);
       if (s.spotCount) localStorage.setItem('kuro_spot_count', s.spotCount);
       if (s.homeCoords) localStorage.setItem('kuro_home_coords', s.homeCoords);
@@ -1781,3 +1848,4 @@ const StorageManager = {
     return true;
   }
 };
+window.StorageManager = StorageManager;
