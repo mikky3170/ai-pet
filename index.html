@@ -1,4 +1,4 @@
-<!-- [作業版 Rev.1] 上部ヘッダーUI刷新・モデルバッジ撤廃・日記帳右端移設・キャッシュバスターv1.1.2統一 -->
+<!-- [稼働Ver 作業版 Rev.2] 可愛らしく元気なアニメーション刷新・バージョン動的参照統一・全UI整合性100%維持 -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -18,8 +18,8 @@
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
-  <!-- 外出し分離スタイルシート（キャッシュバスター付与） -->
-  <link rel="stylesheet" href="style.css?v=v1.1.2">
+  <!-- スタイルシート読み込み -->
+  <link rel="stylesheet" href="style.css?v=v1.1.4">
 </head>
 <body>
 
@@ -37,10 +37,10 @@
         <div class="top-header-left">
           <div class="header-weather-clock-box">
             <div class="hwc-row-datetime">
-              <span id="clock-display-datetime">11/9 (月) 12:54</span>
+              <span id="clock-display-datetime">--/-- (-) --:--</span>
             </div>
             <div class="hwc-row-weatherloc">
-              <span class="hwc-weather-badge" id="clock-display-weather">☀️ 10℃</span>
+              <span class="hwc-weather-badge" id="clock-display-weather">☀️ --℃</span>
               <span class="hwc-location-badge" id="clock-display-location">東村山市</span>
             </div>
           </div>
@@ -51,7 +51,7 @@
           <span id="status-text" class="status-hearing">👂 聴いてるニャ♪</span>
         </div>
 
-        <!-- 右端：日記帳ボタン（旧モデルバッジを撤廃し、押しやすい特等席へ移設） -->
+        <!-- 右端：日記帳ボタン -->
         <div class="top-header-right">
           <button type="button" class="btn-top-diary" id="top-diary-btn" title="これまでの絵日記をアルバムで開くニャ！">📖 日記帳</button>
         </div>
@@ -154,7 +154,7 @@
         </button>
       </div>
 
-      <!-- 操作バー群（下端ピッタリ最適化） -->
+      <!-- 操作バー群 -->
       <div class="bottom-controls">
         <div class="action-bar" id="action-bar">
           <button class="btn-mode-toggle" id="mode-toggle-btn" title="なかよし雑談とおてつだいを切り替えるニャ！">
@@ -179,7 +179,7 @@
           <button class="btn-circle" id="settings-btn" title="設定・記憶・トリセツ">⚙️</button>
         </div>
 
-        <div class="app-version-tag" id="app-footer-version-tag">🐾 AIペット</div>
+        <div class="app-version-tag" id="app-footer-version-tag"></div>
       </div>
     </div>
   </div>
@@ -580,7 +580,7 @@
             </div>
           </div>
 
-          <!-- まぶた調整アコーディオン（開閉と連動してテスト閉眼プレビュー発動） -->
+          <!-- まぶた調整アコーディオン -->
           <details id="eyelid-adjust-accordion" style="background:#f1f5f9; border-radius:12px; padding:8px; margin-top:6px; border:1px solid #cbd5e1;">
             <summary style="font-weight:800; font-size:11.5px; color:#475569; cursor:pointer; outline:none;">
               👁️ 瞳・まぶた（瞬き・目閉じ）位置の精密調整（初期設定用）
@@ -609,7 +609,6 @@
                 <input type="range" id="adj-eyelid-size" min="10" max="36" step="1" value="16">
                 <span class="val-disp" id="adj-eyelid-size-val" style="color:#0284c7;">16</span>
               </div>
-              <!-- 首かしげ（両目傾き・段差）スライダー -->
               <div class="adjust-row" style="color:#1e293b;">
                 <span>首傾き (度):</span>
                 <input type="range" id="adj-eyelid-rotate" min="-30" max="30" step="1" value="0">
@@ -633,11 +632,11 @@
     </div>
   </div>
 
-  <!-- スクリプト読み込み（キャッシュバスター ?v=v1.1.2 付与でTailscale環境のキャッシュ問題を完全解決） -->
-  <script src="char_kuro.js?v=v1.1.2"></script>
-  <script src="char_shiro.js?v=v1.1.2"></script>
-  <script src="version.js?v=v1.1.2"></script>
-  <script src="core_engine.js?v=v1.1.2"></script>
-  <script src="app.js?v=v1.1.2"></script>
+  <!-- スクリプト読み込み -->
+  <script src="char_kuro.js?v=v1.1.4"></script>
+  <script src="char_shiro.js?v=v1.1.4"></script>
+  <script src="version.js?v=v1.1.4"></script>
+  <script src="core_engine.js?v=v1.1.4"></script>
+  <script src="app.js?v=v1.1.4"></script>
 </body>
 </html>
