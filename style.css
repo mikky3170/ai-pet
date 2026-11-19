@@ -1,4 +1,4 @@
-/* [v1.1.2 作業版 Rev.1] 上部ヘッダーUI刷新・ステータスカラー完全定義・四隅完全純白化・日記帳レイアウト最適化・スケッチカードスタイル */
+/* [稼働Ver 作業版 Rev.4] 勝手なステージ跳ねアニメ完全撤廃・昔の愛され元祖ベクターアニメーション100%復元 */
 
 /* ==========================================================================
    新・4大カラーテーマ完全定義 ＆ 端末外観（ライト=白 / ダーク=黒）自動追従
@@ -6,7 +6,7 @@
    ========================================================================== */
 :root {
   --system-outer-bg: #ffffff;
-  --cat-scale: 1;
+  --cat-scale: 0.95; /* 手のひらサイズで可愛らしく収まる適正スケール */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -265,7 +265,6 @@ html, body {
   padding: 0 4px;
 }
 
-/* 基本ステータスバッジ */
 #status-text {
   width: 100%;
   max-width: 190px;
@@ -286,7 +285,6 @@ html, body {
   color: #38bdf8;
 }
 
-/* ★ 1. マイク待機中（オン）：鮮やかエメラルドグリーン ＆ 呼吸パルス発光 */
 #status-text.status-hearing {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
   color: #ffffff !important;
@@ -299,7 +297,6 @@ html, body {
   100% { transform: scale(1.03); filter: brightness(1.15); box-shadow: 0 0 20px rgba(16, 185, 129, 0.85), 0 0 0 1.5px #ffffff inset !important; }
 }
 
-/* 2. ペットお話し中：スカイブルー */
 #status-text.status-speaking {
   background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
   color: #ffffff !important;
@@ -308,7 +305,6 @@ html, body {
   animation: none !important;
 }
 
-/* 3. AI思考中・写真分析中：アンバーオレンジ */
 #status-text.status-thinking {
   background: linear-gradient(135deg, #ea580c 0%, #f97316 100%) !important;
   color: #ffffff !important;
@@ -321,7 +317,6 @@ html, body {
   100% { transform: scale(1.02); opacity: 1; }
 }
 
-/* 4. お休み中（マイク停止）：シックグレー */
 #status-text.status-sleeping,
 .is-paused-mode #status-text {
   background: #334155 !important;
@@ -331,7 +326,6 @@ html, body {
   animation: none !important;
 }
 
-/* 右端の日記帳ボタン（押しやすい特等席デザイン） */
 .btn-top-diary {
   background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
   color: #db2777;
@@ -573,7 +567,7 @@ html, body {
   justify-content: center;
   align-items: flex-end;
   transform-origin: bottom center;
-  transform: scale(var(--cat-scale, 1));
+  transform: scale(var(--cat-scale, 0.95));
   transition: transform 0.35s ease-out;
   background: transparent;
   pointer-events: none;
@@ -585,11 +579,11 @@ html, body {
   animation: catFlipLanding 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
 }
 @keyframes catFlipLanding {
-  0% { transform: translateY(0) scale(var(--cat-scale, 1)); }
-  32% { transform: translateY(-32px) scale(calc(var(--cat-scale, 1) * 0.92), calc(var(--cat-scale, 1) * 1.04)); }
-  65% { transform: translateY(-8px) scale(calc(var(--cat-scale, 1) * 0.96), calc(var(--cat-scale, 1) * 0.98)); }
-  84% { transform: translateY(4px) scale(calc(var(--cat-scale, 1) * 1.06), calc(var(--cat-scale, 1) * 0.93)); }
-  100% { transform: translateY(0) scale(var(--cat-scale, 1)); }
+  0% { transform: translateY(0) scale(var(--cat-scale, 0.95)); }
+  32% { transform: translateY(-32px) scale(calc(var(--cat-scale, 0.95) * 0.92), calc(var(--cat-scale, 0.95) * 1.04)); }
+  65% { transform: translateY(-8px) scale(calc(var(--cat-scale, 0.95) * 0.96), calc(var(--cat-scale, 0.95) * 0.98)); }
+  84% { transform: translateY(4px) scale(calc(var(--cat-scale, 0.95) * 1.06), calc(var(--cat-scale, 0.95) * 0.93)); }
+  100% { transform: translateY(0) scale(var(--cat-scale, 0.95)); }
 }
 
 .paw-landing-sparkle {
@@ -634,43 +628,35 @@ html, body {
   100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-40px); }
 }
 
+/* ★ 元祖の穏やかで上品な呼吸・佇まいアニメーション（勝手な跳ねアニメは完全撤廃） */
 .pet-avatar-wrapper.is-idling #cat-stage-box:not(.cat-stage-flip) { animation: catStageBreathe 4.8s ease-in-out infinite; }
 @keyframes catStageBreathe {
-  0%, 100% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0); }
-  50% { transform: scale(calc(var(--cat-scale, 1) * 1.012), calc(var(--cat-scale, 1) * 0.99)) translateY(-2px); }
+  0%, 100% { transform: scale(var(--cat-scale, 0.95), var(--cat-scale, 0.95)) translateY(0); }
+  50% { transform: scale(calc(var(--cat-scale, 0.95) * 1.012), calc(var(--cat-scale, 0.95) * 0.99)) translateY(-2px); }
 }
-.pet-avatar-wrapper.is-talking #cat-stage-box:not(.cat-stage-flip) { animation: catStageTalk 0.8s ease-in-out infinite alternate; }
-@keyframes catStageTalk {
-  0% { transform: scale(var(--cat-scale, 1)) translateY(0); }
-  100% { transform: scale(calc(var(--cat-scale, 1) * 1.01)) translateY(-3px); }
-}
+
 .pet-avatar-wrapper.is-thinking #cat-stage-box:not(.cat-stage-flip) { animation: catStageThink 2.4s ease-in-out infinite alternate; }
 @keyframes catStageThink {
-  0% { transform: scale(var(--cat-scale, 1)) rotate(-1.5deg); }
-  100% { transform: scale(calc(var(--cat-scale, 1) * 1.01)) rotate(2deg); }
-}
-.pet-avatar-wrapper.is-happy #cat-stage-box:not(.cat-stage-flip) { animation: catStageHappy 0.45s ease-in-out infinite alternate; }
-@keyframes catStageHappy {
-  0% { transform: scale(var(--cat-scale, 1)) translateY(0); }
-  100% { transform: scale(calc(var(--cat-scale, 1) * 1.03)) translateY(-7px); }
+  0% { transform: scale(var(--cat-scale, 0.95)) rotate(-2deg); }
+  100% { transform: scale(calc(var(--cat-scale, 0.95) * 1.01)) rotate(2.5deg); }
 }
 
 .pet-avatar-wrapper.is-sleeping #cat-stage-box {
   animation: catStageSleep 4.0s ease-in-out infinite alternate !important;
 }
 @keyframes catStageSleep {
-  0%, 100% { transform: scale(var(--cat-scale, 1), var(--cat-scale, 1)) translateY(0); }
-  50% { transform: scale(calc(var(--cat-scale, 1) * 1.012), calc(var(--cat-scale, 1) * 0.99)) translateY(2px); }
+  0%, 100% { transform: scale(var(--cat-scale, 0.95), var(--cat-scale, 0.95)) translateY(0); }
+  50% { transform: scale(calc(var(--cat-scale, 0.95) * 1.012), calc(var(--cat-scale, 0.95) * 0.99)) translateY(2px); }
 }
 
 .pet-avatar-wrapper.is-yawning #cat-stage-box {
   animation: catYawnMotion 1.4s ease-in-out forwards !important;
 }
 @keyframes catYawnMotion {
-  0% { transform: scale(var(--cat-scale, 1)) translateY(0); }
-  35% { transform: scale(calc(var(--cat-scale, 1) * 1.02), calc(var(--cat-scale, 1) * 1.04)) translateY(-6px) rotate(1.5deg); }
-  75% { transform: scale(calc(var(--cat-scale, 1) * 0.98), calc(var(--cat-scale, 1) * 0.96)) translateY(2px) rotate(-1deg); }
-  100% { transform: scale(var(--cat-scale, 1)) translateY(0); }
+  0% { transform: scale(var(--cat-scale, 0.95)) translateY(0); }
+  35% { transform: scale(calc(var(--cat-scale, 0.95) * 1.02), calc(var(--cat-scale, 0.95) * 1.04)) translateY(-6px) rotate(1.5deg); }
+  75% { transform: scale(calc(var(--cat-scale, 0.95) * 0.98), calc(var(--cat-scale, 0.95) * 0.96)) translateY(2px) rotate(-1deg); }
+  100% { transform: scale(var(--cat-scale, 0.95)) translateY(0); }
 }
 
 #sleep-zzz-bubble {
@@ -783,7 +769,6 @@ html, body {
 }
 .pet-avatar-wrapper.is-real-mode .real-eyelid-unit { display: block; }
 
-/* 1. クロちゃん専用リアルまぶた */
 .real-eyelid {
   position: absolute;
   background: 
@@ -802,7 +787,6 @@ html, body {
   border-bottom: 2px solid rgba(12, 14, 20, 0.95);
 }
 
-/* 2. シロくん専用リアルまぶた（上から自然に降りて閉じる上蓋構造） */
 .pet-avatar-wrapper.is-char-shiro .real-eyelid {
   background: 
     radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.96) 0%, rgba(241, 245, 249, 0.92) 35%, rgba(203, 213, 225, 0.88) 65%, rgba(71, 85, 105, 0.95) 95%),
@@ -816,7 +800,6 @@ html, body {
   border-bottom: 2.4px solid #1e293b;
 }
 
-/* リアル瞬きアニメーション */
 .pet-avatar-wrapper:not(.is-char-shiro).is-real-mode.is-idling:not(.is-sleeping) .real-eyelid {
   animation: realEyeBlinkKuro 4.6s ease-in-out infinite;
 }
@@ -850,7 +833,7 @@ html, body {
 .pet-avatar-wrapper.is-real-mode.is-assistant-mode .accessory-layer { display: block; }
 
 .mortar-tassel {
-  transform-origin: 70px 32px;
+  transform-origin: 100px 36px;
   animation: tasselSwing 3.2s ease-in-out infinite alternate;
 }
 @keyframes tasselSwing { 0% { transform: rotate(0deg); } 100% { transform: rotate(14deg); } }
@@ -980,8 +963,8 @@ html, body {
    ★ ベクターアバター（アニメキャラ）表示 ＆ ポーズ・瞬き・装飾連動完全定義
    ========================================================================== */
 #cat-vector-avatar-container {
-  width: 270px;
-  height: 310px;
+  width: 290px;
+  height: 325px;
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -993,29 +976,37 @@ html, body {
 }
 #cat-vector-avatar-container.active-mode { display: block; }
 
-/* 全ポーズを基本非表示とし、アクティブな感情ポーズのみを表示するルール */
 .pose-group { display: none !important; }
 .pose-idle-active #pose-idle { display: block !important; }
 .pose-talking-active #pose-talking { display: block !important; }
 .pose-thinking-active #pose-thinking { display: block !important; }
 .pose-happy-active #pose-happy { display: block !important; }
 
-/* ★ アニメモード（ベクター）自然なパチパチ瞬きアニメーション */
-.pose-idle-active:not(.is-sleeping) .cat-eye-blink {
-  animation: vectorEyeBlink 4.5s ease-in-out infinite;
-}
-@keyframes vectorEyeBlink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95%, 97% { transform: scaleY(0.08); }
+/* 瞳の中心軸固定瞬き */
+.cat-eye-left,
+.cat-eye-right {
+  transform-box: fill-box !important;
+  transform-origin: center center !important;
 }
 
-/* お休み中（居眠りモード）はベクター瞳を閉眼状態で完全固定 */
-.is-sleeping .cat-eye-blink {
+.pose-idle-active:not(.is-sleeping) .cat-eye-blink {
+  animation: vectorEyeNaturalBlink 4.6s ease-in-out infinite;
+}
+@keyframes vectorEyeNaturalBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  94.5% { transform: scaleY(0.06); }
+  96.5% { transform: scaleY(1.04); }
+  98% { transform: scaleY(0.06); }
+  99.5% { transform: scaleY(1); }
+}
+
+.is-sleeping .cat-eye-blink,
+.pet-avatar-wrapper.is-sleeping .cat-eye-blink {
   animation: none !important;
   transform: scaleY(0.08) !important;
 }
 
-/* ★ アニメモード限定：モード連動装飾（メガネ・帽子）の厳格制御 */
+/* モード連動装飾（メガネ・帽子） */
 .is-char-kuro:not(.is-assistant-mode) #cat-vector-accessories { display: none !important; }
 .is-char-kuro.is-assistant-mode #cat-vector-accessories { display: block !important; }
 .is-char-kuro.is-assistant-mode #vec-acc-glasses,
@@ -1026,62 +1017,189 @@ html, body {
 .is-char-shiro:not(.is-assistant-mode) #vec-acc-hat { display: none !important; }
 .is-char-shiro.is-assistant-mode #vec-acc-hat { display: block !important; }
 
-/* シロくん専用：大喜び（Happy）時の「両翼パタパタ羽ばたき」アニメーション */
-.pose-happy-active .anim-happy-wings {
-  transform-origin: 100px 135px;
-  animation: shiroFlapWings 0.22s ease-in-out infinite alternate;
-}
-@keyframes shiroFlapWings {
-  0% { transform: scale(1, 1) rotate(0deg); }
-  50% { transform: scale(1.08, 0.88) rotate(-3deg); }
-  100% { transform: scale(0.92, 1.14) rotate(4deg); }
-}
+/* ==========================================================================
+   ★ 昔の愛されベクターアニメーション完全復元（クロちゃん ＆ シロくん）
+   - 余計な全体跳ねアニメを全廃し、上品でモフモフした愛らしい仕草に100%復元
+   ========================================================================== */
 
-/* シロくん専用：お話し中（Talking）の右翼ジェスチャー */
-.pose-talking-active .anim-talking-wing {
-  transform-origin: 140px 135px;
-  animation: shiroTalkWing 0.65s ease-in-out infinite alternate;
+/* --- 1. クロちゃん復元アニメーション --- */
+
+/* ふさふさ尻尾の優雅なフリフリ (Idle) */
+.anim-idle-tail {
+  transform-origin: 125px 195px;
+  animation: kuroTailIdle 3.8s ease-in-out infinite alternate;
 }
-@keyframes shiroTalkWing {
+@keyframes kuroTailIdle {
   0% { transform: rotate(0deg); }
-  100% { transform: rotate(-8deg) translateY(-3px); }
+  100% { transform: rotate(10deg) translateY(-2px); }
 }
 
-/* シロくん・クロちゃん共通：考え中（Thinking）の知的な首傾げ */
-.pose-thinking-active #head-unit {
-  transform-origin: 100px 110px;
-  animation: thinkHeadTilt 2.0s ease-in-out infinite alternate;
+/* お話し中のリズミカルな尻尾パタパタ (Talking) */
+.anim-talking-tail {
+  transform-origin: 136px 175px;
+  animation: kuroTailTalking 0.65s ease-in-out infinite alternate;
 }
-@keyframes thinkHeadTilt {
-  0% { transform: rotate(-4deg); }
+@keyframes kuroTailTalking {
+  0% { transform: rotate(-3deg); }
+  100% { transform: rotate(8deg) translateY(-3px); }
+}
+
+/* 喜びの大揺れ尻尾 (Happy) */
+.anim-happy-tail {
+  transform-origin: 136px 175px;
+  animation: kuroTailHappy 0.28s ease-in-out infinite alternate;
+}
+@keyframes kuroTailHappy {
+  0% { transform: rotate(-5deg); }
+  100% { transform: rotate(12deg) translateY(-5px); }
+}
+
+/* 体の穏やかな呼吸 */
+.anim-idle-body {
+  transform-origin: 100px 226px;
+  animation: kuroBodyBreathe 4.6s ease-in-out infinite alternate;
+}
+@keyframes kuroBodyBreathe {
+  0% { transform: scale(1, 1); }
+  100% { transform: scale(1.015, 0.985); }
+}
+
+/* ふさふさシルバー胸毛の呼吸 */
+.anim-idle-ruff {
+  transform-origin: 100px 145px;
+  animation: kuroRuffBreathe 4.6s ease-in-out infinite alternate;
+}
+@keyframes kuroRuffBreathe {
+  0% { transform: scale(1, 1); }
+  100% { transform: scale(1.025, 0.98) translateY(1.5px); }
+}
+
+/* お耳のピクピク愛らしい仕草 */
+.anim-ear-l {
+  transform-origin: 65px 50px;
+  animation: kuroEarLeftBlink 5.2s ease-in-out infinite;
+}
+@keyframes kuroEarLeftBlink {
+  0%, 88%, 100% { transform: rotate(0deg); }
+  90% { transform: rotate(-6deg); }
+  93% { transform: rotate(3deg); }
+  95% { transform: rotate(0deg); }
+}
+.anim-ear-r {
+  transform-origin: 135px 50px;
+  animation: kuroEarRightBlink 5.6s ease-in-out infinite;
+}
+@keyframes kuroEarRightBlink {
+  0%, 86%, 100% { transform: rotate(0deg); }
+  89% { transform: rotate(6deg); }
+  92% { transform: rotate(-3deg); }
+  95% { transform: rotate(0deg); }
+}
+
+/* クロちゃん：前足を顎に当ててコテンと首かしげ熟考 (Thinking) */
+.anim-thinking-paw {
+  transform-origin: 60px 210px;
+  animation: kuroThinkingPawTap 1.4s ease-in-out infinite alternate;
+}
+@keyframes kuroThinkingPawTap {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-4deg) translateY(-2px); }
+}
+
+/* クロちゃん：両手バンザイ肉球パタパタ大喜び！ (Happy) */
+.anim-happy-arms {
+  transform-origin: 100px 145px;
+  animation: kuroHappyArmsWave 0.32s ease-in-out infinite alternate;
+}
+@keyframes kuroHappyArmsWave {
+  0% { transform: scaleY(0.94) translateY(2px); }
+  100% { transform: scaleY(1.06) translateY(-4px); }
+}
+
+/* クロちゃんのお口パクパク */
+.mouth-talking {
+  transform-origin: 100px 108px;
+  animation: kuroMouthFlap 0.22s ease-in-out infinite alternate;
+}
+@keyframes kuroMouthFlap {
+  0% { transform: scale(1, 0.6); }
+  100% { transform: scale(1.08, 1.15); }
+}
+
+
+/* --- 2. シロくん復元アニメーション --- */
+
+/* シロくん：右羽を斜め上に上げて知的な演説・ジェスチャー (Talking) */
+.anim-talking-wing {
+  transform-origin: 55px 125px;
+  animation: shiroTalkingWingMotion 0.5s ease-in-out infinite alternate;
+}
+@keyframes shiroTalkingWingMotion {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(-10deg) scale(1.06) translateY(-4px); }
+}
+
+/* シロくん：右羽を顎元・くちばし横へちょこんと添える思索 (Thinking) */
+.anim-thinking-wing {
+  transform-origin: 50px 165px;
+  animation: shiroThinkingWingMotion 1.5s ease-in-out infinite alternate;
+}
+@keyframes shiroThinkingWingMotion {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-3.5deg) translateY(-1.5px); }
+}
+
+/* シロくん：両翼を広げて嬉しそうにパタパタ羽ばたく！ (Happy) */
+.anim-happy-wings {
+  transform-origin: 100px 135px;
+  animation: shiroHappyWingsFlap 0.18s ease-in-out infinite alternate;
+}
+@keyframes shiroHappyWingsFlap {
+  0% { transform: scale(1, 0.88) rotate(0deg); }
+  50% { transform: scale(1.08, 1.05) rotate(-2deg) translateY(-3px); }
+  100% { transform: scale(0.92, 1.14) rotate(3deg) translateY(-5px); }
+}
+
+/* シロくんのくちばし・お口パクパク */
+.anim-talk-mouth {
+  transform-origin: 100px 92px;
+  animation: shiroTalkMouthFlap 0.22s ease-in-out infinite alternate;
+}
+@keyframes shiroTalkMouthFlap {
+  0% { transform: scale(1, 0.7); }
+  100% { transform: scale(1.1, 1.15); }
+}
+
+
+/* --- 3. 共通頭部アニメーション --- */
+
+/* Idle時の自然な頭部の呼吸・揺らぎ */
+.anim-idle-head {
+  transform-origin: 100px 105px;
+  animation: idleHeadBreatheMotion 4.6s ease-in-out infinite alternate;
+}
+@keyframes idleHeadBreatheMotion {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1.5px) rotate(1deg); }
+  100% { transform: translateY(0) rotate(-0.8deg); }
+}
+
+/* Thinking時の知的な首かしげ */
+.pose-thinking-active #head-unit {
+  transform-origin: 100px 105px;
+  animation: thinkHeadTiltMotion 2.2s ease-in-out infinite alternate;
+}
+@keyframes thinkHeadTiltMotion {
+  0% { transform: rotate(-4.5deg); }
   100% { transform: rotate(5deg); }
 }
 
-/* シロくん・クロちゃん共通：待機中（Idle）の自然な呼吸 */
-.pose-idle-active #head-unit {
-  transform-origin: 100px 110px;
-  animation: idleHeadBreathe 4.2s ease-in-out infinite alternate;
-}
-@keyframes idleHeadBreathe {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-2px); }
-}
-
-/* クロちゃん専用：尻尾ゆらゆら */
-.anim-idle-tail {
-  transform-origin: 130px 190px;
-  animation: kuroTailWag 3.2s ease-in-out infinite alternate;
-}
-@keyframes kuroTailWag {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(8deg); }
-}
 
 .cat-ground-shadow {
   position: absolute;
   bottom: 4px;
-  width: 240px;
-  height: 22px;
+  width: 250px;
+  height: 24px;
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 75%);
   border-radius: 50%;
   pointer-events: none;
@@ -1132,7 +1250,6 @@ html, body {
 }
 .btn-snack-floating:active { transform: scale(0.92); }
 
-/* 操作バー群（下端ピッタリ最適化） */
 .bottom-controls {
   width: 100%;
   flex-shrink: 0;
@@ -1280,7 +1397,7 @@ html, body {
 
 @media (orientation: landscape) {
   :root {
-    --cat-scale: 0.78;
+    --cat-scale: 0.82;
   }
   body { padding: 0; }
   #pet-container {
@@ -1335,7 +1452,7 @@ html, body {
   #cat-stage-box {
     width: 320px !important;
     height: 310px !important;
-    transform: scale(var(--cat-scale, 0.78)) !important;
+    transform: scale(var(--cat-scale, 0.82)) !important;
     transform-origin: bottom center;
   }
 
@@ -1994,7 +2111,6 @@ html, body {
   min-height: 0;
 }
 
-/* ページシート（画面内でスクロールせず1画面に収まるよう最適化） */
 .book-page-sheet {
   flex: 1;
   height: 100%;
@@ -2063,7 +2179,6 @@ html, body {
   font-weight: 800;
 }
 
-/* 2分割写真コンテナ */
 .diary-photo-duo-container {
   width: 100%;
   height: 135px;
@@ -2193,7 +2308,6 @@ html, body {
 }
 .btn-snap-del:hover { background: #ef4444; }
 
-/* ★ 写真なし日の「手描きスケッチ風イラストカード」（アイディア2） */
 .diary-sketch-duo-container {
   width: 100%;
   height: 120px;
@@ -2265,7 +2379,6 @@ html, body {
 }
 .btn-sketch-add-photo:active { transform: scale(0.94); background: #ffedd5; }
 
-/* 日記本文エリア（flexで美しく伸長） */
 .book-content-box {
   flex: 1;
   display: flex;
@@ -2289,7 +2402,6 @@ html, body {
 }
 .book-diary-textarea:focus { border-color: #f97316; }
 
-/* ひとことボックス（スクロールせず必ず1画面に美しく収まる） */
 .studio-diary-comment-box {
   background: #fdf2f8;
   border: 1.5px solid #fbcfe8;
