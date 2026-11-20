@@ -1,47 +1,73 @@
-// [稼働Ver 作業版 Rev.7] 万能カギ括弧ルビパーサー・会社名タイトル二重読み根絶・VOICEVOXローカル待機5.5s化・写真日付ロック厳格化
+// [稼働Ver 作業版 Rev.9] 直近写真キャッシュ＆継続対話エンジン・二重敬称正規化・表示読みJSON完全分離・VOICEVOXローカル待機5.5s・写真日付ロック厳格化
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS (core_engine.js)
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
-   - 【本質的TextFormatter】『タイトル（よみ）』『会社名（よみ）』の内外カッコ・記号・空白完全対応、二重読み物理根絶
-   - 【ローカルVOICEVOX安定化】待機タイムアウトを3.5秒から5.5秒へ緩和しTailscale/PC直結の完走率最大化
+   - 【直近写真継続対話エンジン】撮影後30分以内の写真キャッシュ管理、写真に関する話題（何色、どこ、これ等）のインテリジェント判定
+   - 【二重敬称正規化エンジン】相手の敬称（くん/ちゃん/さん/様）を自動判別し、「かまぶーくんさん」などの二重重ねを物理防止
+   - 【表示読みJSON完全分離エンジン】GeminiのJSON構造（display / speech）をパースし、画面表示と発音を100%整合
+   - 【シチュエーション文脈生成】前回会話からの経過時間・在宅/外出・時間帯からリアルタイムな状況コンテキストを生成
+   - 【ローカルVOICEVOX安定化】待機タイムアウトを5.5秒に設定しTailscale/PC直結の完走率最大化
    - 【絵日記写真日付完全厳格化】写真プール取得時に日付キー（dateKey）の完全一致を強制し、過去写真の他日漏れを100%根絶
-   - 【音声認識揺らぎ対応】「ゴジラ-0」「ゴジラ-1.0」等のマイク入力認識を自然に受け取れるよう辞書補正を整備
-   - 【検索3段階使い分け】質問・雑学はAIが音声解説、要求時のみGoogleマップ・ニュースカード発行
-   - 【朗読機能完全修復】ヘッダー除去の正規表現を厳格化し本文巻き込みを完全根絶、文分割フォールバック配備
    - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
    - Gemini連携モデル完全固定（gemini-3.5-flash-lite / gemini-flash-lite-latest）
    ========================================================================== */
 
-/* ★ 本質的テキストフォーマッター（表記とよみの明快な1対1分離） */
+/* ★ 本質的テキストフォーマッター（表記とよみの明快な分離＆JSONパースエンジン） */
 const TextFormatter = {
-  // 画面表示用：カギ括弧の内側・外側問わず、よみ仮名カッコを取り除き、正式な作品名・会社名のみを美しく表示
-  formatDisplayText(text) {
-    if (!text) return "";
-    let t = text;
+  // JSON構造または文字列から画面表示用テキストを抽出・整形
+  formatDisplayText(rawText) {
+    if (!rawText) return "";
+    let t = rawText;
+
+    // JSON形式（```json ... ``` または 生JSON）の場合はパースを試みる
+    if (typeof t === 'string' && (t.includes('"display"') || t.trim().startsWith('{'))) {
+      try {
+        const cleanJsonStr = t.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+        const parsed = JSON.parse(cleanJsonStr);
+        if (parsed && parsed.display) {
+          t = parsed.display;
+        }
+      } catch (e) {
+        const match = t.match(/"display"\s*:\s*"([^"]+)"/);
+        if (match) t = match[1];
+      }
+    }
+
     // 1. 『タイトル（よみ）』 ➔ 『タイトル』
     t = t.replace(/([『「【《〈][^『「【《〈）)]+)[（(][^）)]+[）)]([』」】》〉])/gu, '$1$2');
     // 2. 『タイトル』（よみ） ➔ 『タイトル』 / 表記（よみ） ➔ 表記
     t = t.replace(/[（(][^）)]+[）)]/gu, '').trim();
+    // 3. 改行やエスケープ記号のサニタイズ
+    t = t.replace(/\\n/g, '\n').replace(/\\"/g, '"');
     return t;
   },
 
-  // 音声合成用：『タイトル（よみ）』『タイトル』（よみ）会社名（よみ）を、重複なく綺麗によみのみへ置換
-  formatSpeechText(text) {
-    if (!text) return "";
-    let t = text;
+  // JSON構造または文字列からVOICEVOX読み上げ用テキストを抽出・整形
+  formatSpeechText(rawText) {
+    if (!rawText) return "";
+    let t = rawText;
 
-    // 1. 『タイトル（よみ）』型：カギ括弧の中にカッコがある場合、カギ括弧ごとよみに置換
+    // JSON形式の場合は speech 側の正確な読み仮名を採用
+    if (typeof t === 'string' && (t.includes('"speech"') || t.trim().startsWith('{'))) {
+      try {
+        const cleanJsonStr = t.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+        const parsed = JSON.parse(cleanJsonStr);
+        if (parsed && parsed.speech) {
+          t = parsed.speech;
+        }
+      } catch (e) {
+        const match = t.match(/"speech"\s*:\s*"([^"]+)"/);
+        if (match) t = match[1];
+      }
+    }
+
+    // 通常テキストの場合のルビ・括弧解析フォールバック
     t = t.replace(/[『「【《〈][^『「【《〈）)]+[（(]([ぁ-んァ-ヶー\s・\d]+)[）)][』」】》〉]/gu, ' $1 ');
-
-    // 2. 『タイトル』（よみ）型：カギ括弧の外にカッコがある場合、全体をよみに置換
     t = t.replace(/[『「【《〈][^『「【《〈』」】》〉]+[』」】》〉]\s*[（(]([ぁ-んァ-ヶー\s・\d]+)[）)]/gu, ' $1 ');
-
-    // 3. 一般表記（よみ）型：空白や記号（株式会社、SPY×FAMILY等）を含む表記を丸ごとよみに置換
     t = t.replace(/[A-Za-z0-9ぁ-んァ-ヶ一-龠々ー・×\-\.\s]{2,}\s*[（(]([ぁ-んァ-ヶー\s・\d]{2,})[）)]/gu, ' $1 ');
-
-    // 4. 残存したカギ括弧や記号の整理
     t = t.replace(/[『』「」【】《》〈〉]/gu, ' ');
+    t = t.replace(/\\n/g, ' ').replace(/\\"/g, '');
     return t.replace(/\s+/g, ' ').trim();
   }
 };
@@ -499,7 +525,6 @@ class AudioSpeechEngine {
     const cur = getCurChar();
     let t = cur.correctSpeechInput ? cur.correctSpeechInput(text) : text;
 
-    // ★ 音声認識での頻出誤読（マネスク➔マイナス等）および映画タイトルの揺らぎを確実に受け止める補正
     t = t.replace(/(?:マネスク|まねすく|まねす)/gu, 'マイナス');
     t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:0(?:\.0)?|ゼロ|ぜろ)/gu, 'ゴジラ-0');
     t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:1(?:\.0)?|ワン|わん)/gu, 'ゴジラ-1.0');
@@ -536,14 +561,6 @@ class AudioSpeechEngine {
         const man = Math.floor(n / 10000);
         res += numToKana(man) + 'まん';
         n %= 10000;
-      }
-      if (n >= 1000) {
-        const sen = Math.floor(n / 1000);
-        if (sen === 1) res += 'せん';
-        else if (sen === 3) res += 'さんぜん';
-        else if (sen === 8) res += 'はっせん';
-        else res += d[sen] + 'せん';
-        n %= 1000;
       }
       if (n >= 100) {
         const hyaku = Math.floor(n / 100);
@@ -612,7 +629,7 @@ class AudioSpeechEngine {
         localBaseUrl = 'http://localhost:50021';
       }
 
-      // ★ ローカル直結待機時間を 5.5秒（5500ms）に緩和し長文・Tailscaleの完走率を劇的向上
+      // ★ ローカル直結待機時間を 5.5秒に設定し完走率を最大化
       if (localBaseUrl) {
         const localAbortCtrl = new AbortController();
         const localTimeoutId = setTimeout(() => localAbortCtrl.abort(), 5500);
@@ -765,7 +782,7 @@ class AudioSpeechEngine {
       ? speakerIdOverride
       : (typeof AppCore !== 'undefined' && AppCore.getSpeakerId ? AppCore.getSpeakerId() : (getCurChar().defaultSpeakerId || 10));
 
-    // ★ 本質的TextFormatterによる音声読み仮名の自然な抽出（手動個別置換全廃）
+    // ★ 表示読み分離：formatSpeechText で正確な発音テキスト（ひらがな中心）を抽出
     let clean = TextFormatter.formatSpeechText(text || '');
     clean = clean.replace(/https?:\/\/[^\s]+/gi, '');
     clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉🌰]/gu, '').trim();
@@ -1158,13 +1175,14 @@ const LocationProvider = {
 window.LocationProvider = LocationProvider;
 
 /* ==========================================================================
-   MODULE 3: ストレージ管理 ＆ 非破壊データ保護 ＆ カスタム辞書エンジン
+   MODULE 3: ストレージ管理 ＆ 直近写真キャッシュ ＆ カスタム辞書エンジン
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
   DIARIES:  'kuro_data_diaries',
   RECENT_LOGS: 'kuro_recent_chat_logs',
-  CUSTOM_DICT: 'kuro_custom_dictionary'
+  CUSTOM_DICT: 'kuro_custom_dictionary',
+  LAST_SHARED_PHOTO: 'kuro_last_shared_photo_cache'
 };
 
 const DEFAULT_CUSTOM_DICTIONARY = [
@@ -1187,6 +1205,39 @@ const StorageManager = {
     const curId = getCurChar().id;
     if (curId === 'kuro') return baseKey;
     return `${baseKey}_${curId}`;
+  },
+
+  // ★ 直近写真キャッシュ管理（30分以内の写真を見返しながら会話可能にする）
+  setLastSharedPhoto(base64Data) {
+    if (!base64Data) return;
+    const cacheObj = {
+      base64: base64Data,
+      timestamp: Date.now(),
+      dateKey: TimeProvider.getCurrentInfo().lifeLogKey
+    };
+    try {
+      localStorage.setItem(DATA_KEYS.LAST_SHARED_PHOTO, JSON.stringify(cacheObj));
+    } catch(e) {}
+  },
+
+  getLastSharedPhoto() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(DATA_KEYS.LAST_SHARED_PHOTO));
+      if (!saved || !saved.base64 || !saved.timestamp) return null;
+      const now = Date.now();
+      // 30分（1800000ms）以内の写真であれば有効
+      if (now - saved.timestamp <= 30 * 60 * 1000) {
+        return saved;
+      }
+    } catch(e) {}
+    return null;
+  },
+
+  // ★ ユーザーの発言が写真に関係しているか判定
+  isPhotoRelatedTopic(promptText) {
+    if (!promptText) return false;
+    const pattern = /(?:写真|写っ|画像|さっきの|これ|この写真|写ってる|何色|誰|どこにある|何が写|見せて|どんな感じ|カメラ)/;
+    return pattern.test(promptText);
   },
 
   getStorageUsage() {
@@ -1338,7 +1389,6 @@ const StorageManager = {
     }
     if (!cleanText) return;
 
-    // ★ 独立TextFormatterにより、画面ログにはスマートな表示用テキストを保存
     const displayLoggedText = (role === 'model') ? TextFormatter.formatDisplayText(cleanText) : cleanText;
     const isAssistant = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isAssistantMode : false;
 
@@ -1427,6 +1477,7 @@ const StorageManager = {
         localStorage.setItem(key, JSON.stringify(pool.slice(-12)));
         Logger.log(`[Storage] 写真プール保存完了 (${targetDateKey} / 計:${pool.length}枚)`, "info");
       }
+      this.setLastSharedPhoto(photoBase64);
     } catch(e) {}
   },
 
@@ -1449,7 +1500,6 @@ const StorageManager = {
     } catch(e) { return false; }
   },
 
-  // ★ 厳格日付ロック：撮影日付（dateKey）が一致する写真のみを抽出し、過去写真の他日漏れを100%遮断
   getDailyPhotoPool(lifeDateKey) {
     const activeId = getCurChar().id;
     const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
@@ -1748,7 +1798,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.2.1",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.3.1",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
