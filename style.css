@@ -1,4 +1,4 @@
-/* [稼働Ver 作業版 Rev.4] 勝手なステージ跳ねアニメ完全撤廃・昔の愛され元祖ベクターアニメーション100%復元 */
+/* [稼働Ver 作業版 Rev.6] スタイリッシュ・ノルウェージャン優雅シルキーアニメーション・大きく開く愛嬌口パク・思索テイル＆全身生命感同期 */
 
 /* ==========================================================================
    新・4大カラーテーマ完全定義 ＆ 端末外観（ライト=白 / ダーク=黒）自動追従
@@ -6,7 +6,7 @@
    ========================================================================== */
 :root {
   --system-outer-bg: #ffffff;
-  --cat-scale: 0.95; /* 手のひらサイズで可愛らしく収まる適正スケール */
+  --cat-scale: 0.95; /* スタイリッシュで気品のあるプロポーション適正スケール */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -628,17 +628,17 @@ html, body {
   100% { opacity: 0; transform: translateX(-50%) scale(1.4) translateY(-40px); }
 }
 
-/* ★ 元祖の穏やかで上品な呼吸・佇まいアニメーション（勝手な跳ねアニメは完全撤廃） */
-.pet-avatar-wrapper.is-idling #cat-stage-box:not(.cat-stage-flip) { animation: catStageBreathe 4.8s ease-in-out infinite; }
+/* ★ スタイリッシュで優美な深呼吸・佇まいアニメーション */
+.pet-avatar-wrapper.is-idling #cat-stage-box:not(.cat-stage-flip) { animation: catStageBreathe 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 @keyframes catStageBreathe {
   0%, 100% { transform: scale(var(--cat-scale, 0.95), var(--cat-scale, 0.95)) translateY(0); }
-  50% { transform: scale(calc(var(--cat-scale, 0.95) * 1.012), calc(var(--cat-scale, 0.95) * 0.99)) translateY(-2px); }
+  50% { transform: scale(calc(var(--cat-scale, 0.95) * 1.01), calc(var(--cat-scale, 0.95) * 0.992)) translateY(-2px); }
 }
 
 .pet-avatar-wrapper.is-thinking #cat-stage-box:not(.cat-stage-flip) { animation: catStageThink 2.4s ease-in-out infinite alternate; }
 @keyframes catStageThink {
-  0% { transform: scale(var(--cat-scale, 0.95)) rotate(-2deg); }
-  100% { transform: scale(calc(var(--cat-scale, 0.95) * 1.01)) rotate(2.5deg); }
+  0% { transform: scale(var(--cat-scale, 0.95)) rotate(-1.5deg); }
+  100% { transform: scale(calc(var(--cat-scale, 0.95) * 1.01)) rotate(2deg); }
 }
 
 .pet-avatar-wrapper.is-sleeping #cat-stage-box {
@@ -964,7 +964,7 @@ html, body {
    ========================================================================== */
 #cat-vector-avatar-container {
   width: 290px;
-  height: 325px;
+  height: 330px;
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -982,14 +982,15 @@ html, body {
 .pose-thinking-active #pose-thinking { display: block !important; }
 .pose-happy-active #pose-happy { display: block !important; }
 
-/* 瞳の中心軸固定瞬き */
-.cat-eye-left,
-.cat-eye-right {
+/* ★ 瞳の中心軸固定瞬き：待機・お話し・考え中の全ポーズで自然な瞬きを同期 */
+.cat-eye-blink {
   transform-box: fill-box !important;
   transform-origin: center center !important;
 }
 
-.pose-idle-active:not(.is-sleeping) .cat-eye-blink {
+.pose-idle-active:not(.is-sleeping) .cat-eye-blink,
+.pose-talking-active:not(.is-sleeping) .cat-eye-blink,
+.pose-thinking-active:not(.is-sleeping) .cat-eye-blink {
   animation: vectorEyeNaturalBlink 4.6s ease-in-out infinite;
 }
 @keyframes vectorEyeNaturalBlink {
@@ -1018,116 +1019,137 @@ html, body {
 .is-char-shiro.is-assistant-mode #vec-acc-hat { display: block !important; }
 
 /* ==========================================================================
-   ★ 昔の愛されベクターアニメーション完全復元（クロちゃん ＆ シロくん）
-   - 余計な全体跳ねアニメを全廃し、上品でモフモフした愛らしい仕草に100%復元
+   ★ スタイリッシュ・ノルウェージャン優美シルキーアニメーション（クロちゃん）
+   - 写真1〜4枚目完全準拠。気品ある立ち姿、流麗なロングテイル、写真3枚目バンザイ肉球
    ========================================================================== */
 
-/* --- 1. クロちゃん復元アニメーション --- */
+/* --- 1. クロちゃん スタイリッシュ・アニメーション --- */
 
-/* ふさふさ尻尾の優雅なフリフリ (Idle) */
+/* ふさふさ極太ロングテイル：優美で流麗なスローフリフリ (Idle / 写真1枚目) */
 .anim-idle-tail {
-  transform-origin: 125px 195px;
-  animation: kuroTailIdle 3.8s ease-in-out infinite alternate;
+  transform-origin: 125px 198px;
+  animation: kuroTailIdleSilky 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
-@keyframes kuroTailIdle {
+@keyframes kuroTailIdleSilky {
   0% { transform: rotate(0deg); }
-  100% { transform: rotate(10deg) translateY(-2px); }
+  100% { transform: rotate(7deg) translateY(-2px); }
 }
 
-/* お話し中のリズミカルな尻尾パタパタ (Talking) */
+/* お話し中の優雅に斜め上に掲げた尻尾 (Talking / 写真2枚目) */
 .anim-talking-tail {
-  transform-origin: 136px 175px;
-  animation: kuroTailTalking 0.65s ease-in-out infinite alternate;
+  transform-origin: 145px 178px;
+  animation: kuroTailTalkingSilky 0.72s cubic-bezier(0.35, 0, 0.25, 1) infinite alternate;
 }
-@keyframes kuroTailTalking {
-  0% { transform: rotate(-3deg); }
-  100% { transform: rotate(8deg) translateY(-3px); }
+@keyframes kuroTailTalkingSilky {
+  0% { transform: rotate(-2deg); }
+  100% { transform: rotate(6deg) translateY(-3px); }
 }
 
-/* 喜びの大揺れ尻尾 (Happy) */
+/* 考え中も優雅な極太ロングテイル：先端が思案するようにゆっくりトントンと揺れる (Thinking) */
+.anim-thinking-tail {
+  transform-origin: 125px 198px;
+  animation: kuroTailThinkingSilky 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+@keyframes kuroTailThinkingSilky {
+  0% { transform: rotate(0deg); }
+  60% { transform: rotate(3deg) translateY(-1px); }
+  100% { transform: rotate(-1.5deg) translateY(1px); }
+}
+
+/* 写真3枚目完全一致：大喜びのダイナミックかつ優美なロングテイル (Happy) */
 .anim-happy-tail {
-  transform-origin: 136px 175px;
-  animation: kuroTailHappy 0.28s ease-in-out infinite alternate;
+  transform-origin: 95px 200px;
+  animation: kuroTailHappySilky 0.38s ease-in-out infinite alternate;
 }
-@keyframes kuroTailHappy {
-  0% { transform: rotate(-5deg); }
-  100% { transform: rotate(12deg) translateY(-5px); }
+@keyframes kuroTailHappySilky {
+  0% { transform: rotate(-4deg); }
+  100% { transform: rotate(8deg) translateY(-4px); }
 }
 
-/* 体の穏やかな呼吸 */
+/* 引き締まった体幹の深い深呼吸 (Idle) */
 .anim-idle-body {
-  transform-origin: 100px 226px;
-  animation: kuroBodyBreathe 4.6s ease-in-out infinite alternate;
+  transform-origin: 110px 226px;
+  animation: kuroBodyBreatheSilky 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
-@keyframes kuroBodyBreathe {
+@keyframes kuroBodyBreatheSilky {
   0% { transform: scale(1, 1); }
-  100% { transform: scale(1.015, 0.985); }
+  100% { transform: scale(1.012, 0.988); }
 }
 
-/* ふさふさシルバー胸毛の呼吸 */
+/* 豊かなシルバーホワイト胸毛の流麗なブリージング */
 .anim-idle-ruff {
-  transform-origin: 100px 145px;
-  animation: kuroRuffBreathe 4.6s ease-in-out infinite alternate;
+  transform-origin: 110px 145px;
+  animation: kuroRuffBreatheSilky 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
-@keyframes kuroRuffBreathe {
+@keyframes kuroRuffBreatheSilky {
   0% { transform: scale(1, 1); }
-  100% { transform: scale(1.025, 0.98) translateY(1.5px); }
+  100% { transform: scale(1.02, 0.985) translateY(1.2px); }
 }
 
-/* お耳のピクピク愛らしい仕草 */
+/* ピンと立った耳の上品なピクピク仕草 */
 .anim-ear-l {
-  transform-origin: 65px 50px;
-  animation: kuroEarLeftBlink 5.2s ease-in-out infinite;
+  transform-origin: 74px 45px;
+  animation: kuroEarLeftBlinkSilky 5.4s ease-in-out infinite;
 }
-@keyframes kuroEarLeftBlink {
+@keyframes kuroEarLeftBlinkSilky {
   0%, 88%, 100% { transform: rotate(0deg); }
-  90% { transform: rotate(-6deg); }
-  93% { transform: rotate(3deg); }
+  90% { transform: rotate(-5deg); }
+  93% { transform: rotate(2.5deg); }
   95% { transform: rotate(0deg); }
 }
 .anim-ear-r {
-  transform-origin: 135px 50px;
-  animation: kuroEarRightBlink 5.6s ease-in-out infinite;
+  transform-origin: 146px 45px;
+  animation: kuroEarRightBlinkSilky 5.8s ease-in-out infinite;
 }
-@keyframes kuroEarRightBlink {
+@keyframes kuroEarRightBlinkSilky {
   0%, 86%, 100% { transform: rotate(0deg); }
-  89% { transform: rotate(6deg); }
-  92% { transform: rotate(-3deg); }
+  89% { transform: rotate(5deg); }
+  92% { transform: rotate(-2.5deg); }
   95% { transform: rotate(0deg); }
 }
 
-/* クロちゃん：前足を顎に当ててコテンと首かしげ熟考 (Thinking) */
-.anim-thinking-paw {
-  transform-origin: 60px 210px;
-  animation: kuroThinkingPawTap 1.4s ease-in-out infinite alternate;
+/* 写真4枚目完全再現：自然に繋がる前脚の腕＆顎下に添えた肉球の思索アニメーション (Thinking) */
+.anim-thinking-arm {
+  transform-origin: 78px 212px;
+  animation: kuroThinkingArmSilky 1.8s ease-in-out infinite alternate;
 }
-@keyframes kuroThinkingPawTap {
+@keyframes kuroThinkingArmSilky {
   0% { transform: rotate(0deg); }
-  100% { transform: rotate(-4deg) translateY(-2px); }
+  100% { transform: rotate(-2.5deg) translateY(-2px); }
 }
 
-/* クロちゃん：両手バンザイ肉球パタパタ大喜び！ (Happy) */
+/* 写真3枚目完全一致：二足立ちで両手を高くバンザイ＆ピンク肉球パタパタ大喜び！ (Happy) */
 .anim-happy-arms {
-  transform-origin: 100px 145px;
-  animation: kuroHappyArmsWave 0.32s ease-in-out infinite alternate;
+  transform-origin: 110px 145px;
+  animation: kuroHappyArmsWaveSilky 0.35s ease-in-out infinite alternate;
 }
-@keyframes kuroHappyArmsWave {
-  0% { transform: scaleY(0.94) translateY(2px); }
-  100% { transform: scaleY(1.06) translateY(-4px); }
+@keyframes kuroHappyArmsWaveSilky {
+  0% { transform: scaleY(0.96) translateY(2px); }
+  100% { transform: scaleY(1.04) translateY(-3px); }
 }
 
-/* クロちゃんのお口パクパク */
+.anim-happy-body {
+  transform-origin: 110px 235px;
+  animation: kuroHappyBodySpring 0.35s ease-in-out infinite alternate;
+}
+@keyframes kuroHappyBodySpring {
+  0% { transform: scale(1, 0.985); }
+  100% { transform: scale(0.99, 1.015); }
+}
+
+/* ★ お話し中の大きく開く元気で愛らしい口パクアニメーション */
 .mouth-talking {
-  transform-origin: 100px 108px;
-  animation: kuroMouthFlap 0.22s ease-in-out infinite alternate;
+  transform-origin: 110px 109px;
+  animation: kuroMouthFlapWide 0.22s ease-in-out infinite alternate;
 }
-@keyframes kuroMouthFlap {
-  0% { transform: scale(1, 0.6); }
-  100% { transform: scale(1.08, 1.15); }
+@keyframes kuroMouthFlapWide {
+  0% { transform: scale(0.92, 0.45); }
+  50% { transform: scale(1.04, 1.05); }
+  100% { transform: scale(1.15, 1.35) translateY(1px); }
 }
 
 
-/* --- 2. シロくん復元アニメーション --- */
+/* --- 2. シロくん アニメーション --- */
 
 /* シロくん：右羽を斜め上に上げて知的な演説・ジェスチャー (Talking) */
 .anim-talking-wing {
@@ -1174,24 +1196,35 @@ html, body {
 /* --- 3. 共通頭部アニメーション --- */
 
 /* Idle時の自然な頭部の呼吸・揺らぎ */
-.anim-idle-head {
-  transform-origin: 100px 105px;
-  animation: idleHeadBreatheMotion 4.6s ease-in-out infinite alternate;
+.pose-idle-active #head-unit {
+  transform-origin: 110px 105px;
+  animation: idleHeadBreatheMotion 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
 @keyframes idleHeadBreatheMotion {
   0% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-1.5px) rotate(1deg); }
-  100% { transform: translateY(0) rotate(-0.8deg); }
+  50% { transform: translateY(-1.2px) rotate(0.8deg); }
+  100% { transform: translateY(0) rotate(-0.6deg); }
+}
+
+/* Talking時の小首をピョコピョコ弾ませる愛らしい身振り */
+.pose-talking-active #head-unit {
+  transform-origin: 110px 105px;
+  animation: talkingHeadBobbingMotion 0.44s ease-in-out infinite alternate;
+}
+@keyframes talkingHeadBobbingMotion {
+  0% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-2px) rotate(1.2deg); }
+  100% { transform: translateY(0.5px) rotate(-0.5deg); }
 }
 
 /* Thinking時の知的な首かしげ */
 .pose-thinking-active #head-unit {
-  transform-origin: 100px 105px;
+  transform-origin: 110px 105px;
   animation: thinkHeadTiltMotion 2.2s ease-in-out infinite alternate;
 }
 @keyframes thinkHeadTiltMotion {
-  0% { transform: rotate(-4.5deg); }
-  100% { transform: rotate(5deg); }
+  0% { transform: rotate(-4.5deg) translateY(-1px); }
+  100% { transform: rotate(4.0deg) translateY(0); }
 }
 
 
