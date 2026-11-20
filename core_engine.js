@@ -1,45 +1,48 @@
-// [稼働Ver 作業版 Rev.6] 手動個別置換全廃・万能ルビパーサー一本化・音声認識揺らぎ完全補正・基盤完全動作保証
+// [稼働Ver 作業版 Rev.7] 万能カギ括弧ルビパーサー・会社名タイトル二重読み根絶・VOICEVOXローカル待機5.5s化・写真日付ロック厳格化
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS (core_engine.js)
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
-   - 【本質的TextFormatter】手動の個別作品置換を完全全廃。カギカッコ付きタイトルも1回で綺麗に読み仮名化する単一パーサーへ集約
+   - 【本質的TextFormatter】『タイトル（よみ）』『会社名（よみ）』の内外カッコ・記号・空白完全対応、二重読み物理根絶
+   - 【ローカルVOICEVOX安定化】待機タイムアウトを3.5秒から5.5秒へ緩和しTailscale/PC直結の完走率最大化
+   - 【絵日記写真日付完全厳格化】写真プール取得時に日付キー（dateKey）の完全一致を強制し、過去写真の他日漏れを100%根絶
    - 【音声認識揺らぎ対応】「ゴジラ-0」「ゴジラ-1.0」等のマイク入力認識を自然に受け取れるよう辞書補正を整備
-   - 【疎結合・自立設計】上位UI（app.js/AppCore）との相互依存を解消し、単体で安全に稼働する基盤エンジン
    - 【検索3段階使い分け】質問・雑学はAIが音声解説、要求時のみGoogleマップ・ニュースカード発行
    - 【朗読機能完全修復】ヘッダー除去の正規表現を厳格化し本文巻き込みを完全根絶、文分割フォールバック配備
-   - 【ステータス完全連動】マイク待機（エメラルドグリーン）・お話し中（青）・思考中（橙）の不可分同期
-   - 【絵日記写真日付完全厳格化】写真保存時に日付キーを完全バインドし、別日への写真混入を物理的に根絶
-   - 【当日写真厳格フィルタ】写真プール取得時に撮影日を厳密照合し、他日の写真の混入を100%遮断
-   - 【写真原本エクスポート完全化】ストレージお掃除原本に本文・ひとことを完全保持しビューワー完全連携
-   - 【動的音声認識辞書エンジン】PCビューワーで登録・編集したカスタム単語辞書を動的適用
-   - 【Tailscale/ローカル直結対応】ホスト自動判定＆3500ms最適待機によりスマホ経由でもPC爆速GPU合成完走
    - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
-   - 【TTSレート制限(429)防護壁】クラウド利用時の429検知時クールダウンタイマー＆安全キューイング機構維持
-   - 【絵日記書き出し完全統一】「YYYY年M月D日 (曜日) 天気: ○○ 気温: ○○℃」ヘッダー自動整形＆重複挨拶パージ
-   - 【音響完全修復】直列カスケード回路によるプツプツノイズ100%根絶＆豊かな元祖ゴロゴロ音
    - Gemini連携モデル完全固定（gemini-3.5-flash-lite / gemini-flash-lite-latest）
    ========================================================================== */
 
 /* ★ 本質的テキストフォーマッター（表記とよみの明快な1対1分離） */
 const TextFormatter = {
-  // 画面表示用：カッコと中のよみを取り除き、正式な作品名・表記のみを美しく表示
+  // 画面表示用：カギ括弧の内側・外側問わず、よみ仮名カッコを取り除き、正式な作品名・会社名のみを美しく表示
   formatDisplayText(text) {
     if (!text) return "";
-    return text.replace(/[（(][^）)]+[）)]/gu, '').trim();
+    let t = text;
+    // 1. 『タイトル（よみ）』 ➔ 『タイトル』
+    t = t.replace(/([『「【《〈][^『「【《〈）)]+)[（(][^）)]+[）)]([』」】》〉])/gu, '$1$2');
+    // 2. 『タイトル』（よみ） ➔ 『タイトル』 / 表記（よみ） ➔ 表記
+    t = t.replace(/[（(][^）)]+[）)]/gu, '').trim();
+    return t;
   },
 
-  // 音声合成用：『表記』（よみ）または 表記（よみ）を、重複なく綺麗によみのみへ置換
+  // 音声合成用：『タイトル（よみ）』『タイトル』（よみ）会社名（よみ）を、重複なく綺麗によみのみへ置換
   formatSpeechText(text) {
     if (!text) return "";
     let t = text;
 
-    // 1. カギカッコや記号を含む「表記（よみ）」または「『表記』（よみ）」を確実にカッコ内のよみに置換（手動個別置換全廃・重複完全防止）
-    t = t.replace(/[『「【《〈]?[^\s（(『「【《〈]+[』」】》〉]?[（(]([ぁ-んァ-ヶー\s]+)[）)]/gu, '$1');
+    // 1. 『タイトル（よみ）』型：カギ括弧の中にカッコがある場合、カギ括弧ごとよみに置換
+    t = t.replace(/[『「【《〈][^『「【《〈）)]+[（(]([ぁ-んァ-ヶー\s・\d]+)[）)][』」】》〉]/gu, ' $1 ');
 
-    // 2. 発音を濁らせる記号の整理
+    // 2. 『タイトル』（よみ）型：カギ括弧の外にカッコがある場合、全体をよみに置換
+    t = t.replace(/[『「【《〈][^『「【《〈』」】》〉]+[』」】》〉]\s*[（(]([ぁ-んァ-ヶー\s・\d]+)[）)]/gu, ' $1 ');
+
+    // 3. 一般表記（よみ）型：空白や記号（株式会社、SPY×FAMILY等）を含む表記を丸ごとよみに置換
+    t = t.replace(/[A-Za-z0-9ぁ-んァ-ヶ一-龠々ー・×\-\.\s]{2,}\s*[（(]([ぁ-んァ-ヶー\s・\d]{2,})[）)]/gu, ' $1 ');
+
+    // 4. 残存したカギ括弧や記号の整理
     t = t.replace(/[『』「」【】《》〈〉]/gu, ' ');
-    return t;
+    return t.replace(/\s+/g, ' ').trim();
   }
 };
 window.TextFormatter = TextFormatter;
@@ -609,12 +612,13 @@ class AudioSpeechEngine {
         localBaseUrl = 'http://localhost:50021';
       }
 
+      // ★ ローカル直結待機時間を 5.5秒（5500ms）に緩和し長文・Tailscaleの完走率を劇的向上
       if (localBaseUrl) {
         const localAbortCtrl = new AbortController();
-        const localTimeoutId = setTimeout(() => localAbortCtrl.abort(), 3500);
+        const localTimeoutId = setTimeout(() => localAbortCtrl.abort(), 5500);
 
         try {
-          Logger.log(`[TTS] ⚡ PCローカル直結試行 (${localBaseUrl}, 話者:${speakerId}): 「${text.substring(0, 16)}…」`, "info");
+          Logger.log(`[TTS] ⚡ PCローカル直結試行 (${localBaseUrl}, 話者:${speakerId}, 待機:5.5s): 「${text.substring(0, 16)}…」`, "info");
 
           const qUrl = `${localBaseUrl}/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`;
           const qRes = await fetch(qUrl, {
@@ -1445,12 +1449,13 @@ const StorageManager = {
     } catch(e) { return false; }
   },
 
+  // ★ 厳格日付ロック：撮影日付（dateKey）が一致する写真のみを抽出し、過去写真の他日漏れを100%遮断
   getDailyPhotoPool(lifeDateKey) {
     const activeId = getCurChar().id;
     const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
     try {
       let pool = JSON.parse(localStorage.getItem(key)) || [];
-      pool = pool.filter(p => !p.dateKey || p.dateKey === lifeDateKey);
+      pool = pool.filter(p => p && p.dateKey === lifeDateKey);
 
       if (pool.length === 0) {
         const diaries = this.loadAllDiaries();
@@ -1743,7 +1748,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.2.0",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.2.1",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
