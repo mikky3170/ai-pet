@@ -1,10 +1,11 @@
-// [稼働Ver 作業版 Rev.11] スタイリッシュ造形完全同期・タイムアウト3段階制御（8s➔16s➔30s）完全維持・完全動作保証
+
+// [稼働Ver 作業版 Rev.13] 直近写真継続対話エンジン・話者ピル3大集約・二重敬称根絶・タイムアウト3段階制御（8s➔16s➔30s）完全維持
 /* ==========================================================================
    AIペット アプリケーションUI ＆ 思考統括司令塔 (app.js)
    - 【責務分離】core_engine.js の基盤機能（音声・GPS・ストレージ・TextFormatter）を基にUIと思考を統括
    - MODULE 4: キャラクター描画 ＆ まぶた・装飾制御（CatAvatarRenderer：スタイリッシュ造形＆両手バンザイ肉球Happy完全同期）
-   - MODULE 5: Gemini AI思考エンジン（AIThoughtEngine：3段階タイムアウト 8s➔16s➔30s 完全復元）
-   - MODULE 6: 中央司令塔（AppCore：イベントバインド・タイマー・日記帳・設定モーダル・ライフサイクル）
+   - MODULE 5: Gemini AI思考エンジン（AIThoughtEngine：直近写真の自動マルチモーダル再添付・表示読みJSON完全分離・3段階タイムアウト 8s➔16s➔30s）
+   - MODULE 6: 中央司令塔（AppCore：話者ピル3大集約「家族/友人/ゲスト」・確実クリア・タイマー・日記帳・設定モーダル・ライフサイクル）
    - ブート処理: bootAIApp（三重起動安全ガード）
    ========================================================================== */
 
@@ -353,7 +354,7 @@ class CatAvatarRenderer {
 window.CatAvatarRenderer = CatAvatarRenderer;
 
 /* ==========================================================================
-   MODULE 5: Gemini AI思考エンジン（3段階タイムアウト 8s➔16s➔30s 完全復元）
+   MODULE 5: Gemini AI思考エンジン（直近写真の自動マルチモーダル再添付＆3段階タイムアウト）
    ========================================================================== */
 class AIThoughtEngine {
   constructor() {
@@ -409,17 +410,27 @@ class AIThoughtEngine {
       }
     }
 
+    // ★ 写真データの添付判定（今回撮影した写真、または直近30分以内の写真を見直しながらの会話）
+    let effectivePhoto = photoBase64;
+    if (!effectivePhoto) {
+      const lastCachedPhoto = StorageManager.getLastSharedPhoto();
+      if (lastCachedPhoto && StorageManager.isPhotoRelatedTopic(currentPrompt)) {
+        effectivePhoto = lastCachedPhoto.base64;
+        Logger.log(`[Vision] 📷 直近写真（30分以内）を文脈添付して対話再開`, "info");
+      }
+    }
+
     const userParts = [{ text: currentPrompt }];
-    if (photoBase64) {
+    if (effectivePhoto) {
       userParts.unshift({
         inline_data: {
           mime_type: "image/jpeg",
-          data: photoBase64.replace(/^data:image\/\w+;base64,/, '')
+          data: effectivePhoto.replace(/^data:image\/\w+;base64,/, '')
         }
       });
     }
 
-    if (lastRole === 'user' && !photoBase64) {
+    if (lastRole === 'user' && !effectivePhoto) {
       contents[contents.length - 1].parts[0].text += `\n${currentPrompt}`;
     } else {
       contents.push({ role: 'user', parts: userParts });
@@ -451,9 +462,24 @@ class AIThoughtEngine {
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
+    // ★ 状況シチュエーション文脈の生成
+    const nowMs = Date.now();
+    const lastTalkMs = AppCore.state.lastUserTalkTime || nowMs;
+    const minutesSinceLastTalk = Math.floor((nowMs - lastTalkMs) / 60000);
+    let situationContext = "";
+    if (minutesSinceLastTalk >= 60) {
+      const hours = (minutesSinceLastTalk / 60).toFixed(1);
+      situationContext = `・前回の会話から約【${hours}時間】経過して久しぶりに話しかけられました。`;
+    } else if (minutesSinceLastTalk >= 5) {
+      situationContext = `・前回の会話から約【${minutesSinceLastTalk}分】ぶりの会話です。`;
+    } else {
+      situationContext = `・直前までテンポよく連続で会話を交わしている最中です。`;
+    }
+
     const context = {
       timeInfo, weather, temp, townArea, isAtHome, isAssistantMode: isAssistant,
-      memories, recentDiaries, pastMemoryDiary, talkLength: talkLen, effectiveTalkLength: effectiveLen
+      memories, recentDiaries, pastMemoryDiary, talkLength: talkLen, effectiveTalkLength: effectiveLen,
+      situationContext, currentSpeaker: AppCore.state.currentGuestSpeaker || (getCurChar().id === 'shiro' ? '助手' : 'おやびん')
     };
 
     const cur = getCurChar();
@@ -473,11 +499,11 @@ class AIThoughtEngine {
 
     const contents = this._buildContentsPayload(rawLogs, promptText, photoBase64);
 
-    let targetMaxTokens = 140;
-    if (effectiveLen === 'short') targetMaxTokens = 60;
-    else if (effectiveLen === 'long') targetMaxTokens = 300;
+    let targetMaxTokens = 220;
+    if (effectiveLen === 'short') targetMaxTokens = 120;
+    else if (effectiveLen === 'long') targetMaxTokens = 450;
 
-    // ★ 本来の「8秒 ➔ 16秒 ➔ 30秒」3段階フォールバック設計へ完全復元
+    // ★ 本来の「8秒 ➔ 16秒 ➔ 30秒」3段階フォールバック設計
     const timeoutStages = [8000, 16000, 30000];
 
     for (let stageIdx = 0; stageIdx < timeoutStages.length; stageIdx++) {
@@ -498,10 +524,15 @@ class AIThoughtEngine {
         const bodyPayload = {
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: contents,
-          generationConfig: { temperature: 0.7, maxOutputTokens: targetMaxTokens }
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: targetMaxTokens,
+            responseMimeType: "application/json"
+          }
         };
 
         if (isAssistant) {
+          delete bodyPayload.generationConfig.responseMimeType;
           bodyPayload.tools = KURO_TOOLS;
           bodyPayload.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
         }
@@ -524,6 +555,7 @@ class AIThoughtEngine {
 
           delete bodyPayload.tools;
           delete bodyPayload.toolConfig;
+          bodyPayload.generationConfig.responseMimeType = "application/json";
           res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -552,13 +584,13 @@ class AIThoughtEngine {
               const area = args.area || townArea || "東村山市";
               cards = this._createSmartMapCards(spot, area);
               replyText = cur.id === 'shiro'
-                ? `助手よ、${spot}の場所を計算して割り出したホ！この地図で確認するが良いホ！`
+                ? `助手よ、${spot}の場所を計算して割り出したホ！この地図で確認するが良いホ！🦉`
                 : `おやびん、${spot}の場所を地図で見つけてきたニャ！ここから確認してニャン🐾`;
             } else if (callInfo.name === "searchLatestNews") {
               const topic = args.topic || "最新ニュース";
               cards = this._createSmartNewsCards(topic);
               replyText = cur.id === 'shiro'
-                ? `助手よ、${topic}の最新情報を整理したホ！目を通すが良いホ！📰`
+                ? `助手よ、${topic}の最新情報を整理したホ！目を通すが良いホ！📰🦉`
                 : `おやびん、${topic}の最新ニュースをチェックしたニャ！見てみてニャン📰🐾`;
             }
           }
@@ -567,21 +599,9 @@ class AIThoughtEngine {
           if (textPart?.text && !replyText) replyText = textPart.text;
 
           if (replyText) {
-            let clean = replyText.replace(/https?:\/\/[^\s]+/gi, '');
-            clean = clean.replace(/<!--[\s\S]*?-->/g, '').replace(/[*#_~`]/g, '').trim();
-            clean = clean.replace(/余([はがものにもと])/g, `${cur.firstPerson}$1`).replace(/余/g, cur.firstPerson);
-
-            // ★ セリフ本文の不要なコネ回しを全廃し、末尾アイコン添えのみを通す透明な一本道
-            clean = cur.cleanEnding ? cur.cleanEnding(clean) : clean;
-
-            if (isAssistant && cards.length === 0) {
-              const fallbackCards = this._detectCardsFromSpeech(clean, promptText);
-              if (fallbackCards.length > 0) cards = fallbackCards;
-            }
-
             Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}, stage:${stageIdx + 1}]`, "success");
             this.activeAbortController = null;
-            return { success: true, text: clean, groundingCards: cards };
+            return { success: true, text: replyText, groundingCards: cards };
           }
         }
       } catch (err) {
@@ -599,7 +619,7 @@ class AIThoughtEngine {
     if (this.isUserCancelled) return { success: false, aborted: true };
 
     const timeoutMsg = cur.id === 'shiro'
-      ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！"
+      ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！🦉"
       : "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
 
     return { success: false, isTimeout: true, text: timeoutMsg };
@@ -673,27 +693,6 @@ class AIThoughtEngine {
       });
     }
     return cards;
-  }
-
-  _detectCardsFromSpeech(speechText, userPrompt) {
-    if (!AppCore.state.isAssistantMode) return [];
-    const prompt = userPrompt || "";
-
-    const hasNewsDemand = /(?:ニュース|速報|ヘッドライン|トピックス).*(?:教えて|見せて|知りたい|ちょうだい|ある|流して)|(?:教えて|見せて).*(?:ニュース|速報)/.test(prompt);
-    if (hasNewsDemand) {
-      const newsMatch = prompt.match(/(?:大谷翔平|大谷|プロ野球|天気|東村山|政治|経済|話題)/);
-      const topic = newsMatch ? newsMatch[0] : "最新ニュース";
-      return this._createSmartNewsCards(topic);
-    }
-
-    const hasMapSearchIntent = /(?:探して|教えて|どこ|場所|近く|案内|行きたい|食べたい|寄りたい|連れてって)/.test(prompt);
-    if (hasMapSearchIntent) {
-      const spotMatch = prompt.match(/(?:炭火ホルモン\s*丸川|丸川|餃子の満洲|満洲|ラーメン|つけ麺|ホルモン|餃子|焼肉|寿司|鮨|カレー|うどん|そば|中華|イタリアン|居酒屋|カフェ|喫茶店|公園|ベンチ|散歩コース|休憩スポット|スポット|散策)/);
-      if (spotMatch) {
-        return this._createSmartMapCards(spotMatch[0], LocationProvider.detailedTownArea || LocationProvider.cleanCityOnly);
-      }
-    }
-    return [];
   }
 
   async generateDailyDiarySummary(dailyAllLogs, targetLifeDateKey = null, targetLifeFullDate = null) {
@@ -779,7 +778,10 @@ const AppCore = {
     wakeLockSentinel: null, isLandscape: false,
     isCalibratingEyelid: false,
     studioDateKeys: [], studioCurrentDateIdx: 0, isDiaryReading: false, isFinalizingDiary: false,
-    idleSoliloquyTimer: null, lastActivityTime: Date.now(), lastCheckedLifeLogKey: null
+    idleSoliloquyTimer: null, lastActivityTime: Date.now(), lastCheckedLifeLogKey: null,
+    lastUserTalkTime: Date.now(),
+    currentGuestSpeaker: null, // 案A：ゲスト話者具体名（nullの場合はおやびん/助手）
+    currentGuestType: null     // 案A：3大分類 'family' | 'friend' | 'guest'
   },
 
   audio: new AudioSpeechEngine(),
@@ -808,6 +810,30 @@ const AppCore = {
     } else if (state === 'sleeping') {
       st.classList.add('status-sleeping');
       st.textContent = customText || "💤 すやすやお休み中…";
+    }
+  },
+
+  // ★ 案A：3大固定ラベル（家族 / 友人 / ゲスト）によるスマートピルバッジ更新
+  updateGuestSpeakerBadge(type = null, specificName = null) {
+    this.state.currentGuestType = type;
+    this.state.currentGuestSpeaker = specificName;
+
+    const pill = document.getElementById('guest-pill-badge');
+    const nameSpan = document.getElementById('guest-pill-name');
+    if (!pill || !nameSpan) return;
+
+    if (type) {
+      const labelMap = {
+        family: "👤 家族",
+        friend: "👤 友人",
+        guest:  "👤 ゲスト"
+      };
+      nameSpan.textContent = labelMap[type] || "👤 ゲスト";
+      pill.style.display = 'inline-flex';
+    } else {
+      pill.style.display = 'none';
+      this.state.currentGuestSpeaker = null;
+      this.state.currentGuestType = null;
     }
   },
 
@@ -868,8 +894,8 @@ const AppCore = {
     this._syncEyelidInputsToActiveChar();
 
     const welcomeMsg = charId === 'shiro'
-      ? "フン、ボクの出番ホな！よろしく頼むホ、助手！"
-      : "おやびん、わたしはクロだニャン♪ 今日もよろしくニャ！";
+      ? "フン、ボクの出番ホな！よろしく頼むホ、助手！🦉"
+      : "おやびん、わたしはクロだニャン♪ 今日もよろしくニャ！🐾";
 
     this.audio.speak(welcomeMsg, null, () => this.renderBubble('model', welcomeMsg));
     const switchToast = charId === 'shiro' ? "パートナーを【ホウ博士】に切り替えたホ！" : "パートナーを【クロちゃん】に切り替えたニャン♪";
@@ -1157,8 +1183,8 @@ const AppCore = {
 
         const cur = getCurChar();
         const autoNotice = hasNewLogs && isProper
-          ? (cur.id === 'shiro' ? `助手よ！昨日の日誌に夜の会話も追加しておいたホ！` : `おやびん！昨日の日記に夜のお話しも追加しておいたニャン🐾`)
-          : (cur.id === 'shiro' ? `助手よ！昨日の研究観察日誌を書いておいたホ！日誌を見てみるが良いホ！` : `おやびん！昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`);
+          ? (cur.id === 'shiro' ? `助手よ！昨日の日誌に夜の会話も追加しておいたホ！🦉` : `おやびん！昨日の日記に夜のお話しも追加しておいたニャン🐾`)
+          : (cur.id === 'shiro' ? `助手よ！昨日の研究観察日誌を書いておいたホ！日誌を見てみるが良いホ！🦉` : `おやびん！昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`);
 
         this.renderBubble('model', autoNotice);
         const savedDiary = StorageManager.getDiary(yKey);
@@ -1186,7 +1212,7 @@ const AppCore = {
     const cur = getCurChar();
     if (logs.length === 0) {
       const greeting = cur.id === 'shiro'
-        ? `助手よ、ボクは${cur.title || cur.name}だホ！今日も知的な一日にするホ！`
+        ? `助手よ、ボクは${cur.title || cur.name}だホ！今日も知的な一日にするホ！🦉`
         : `おやびん、わたしは${cur.name}だニャン🐾 今日もいっぱいお話しするニャ♪`;
       this.renderBubble('model', greeting);
       return;
@@ -1262,7 +1288,6 @@ const AppCore = {
     b.className = 'chat-bubble';
     let cleanBubbleText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
 
-    // ★ 独立TextFormatterにより、画面フキダシにはルビカッコを除去して格好良く表示
     if (role === 'model') {
       cleanBubbleText = TextFormatter.formatDisplayText(cleanBubbleText);
     }
@@ -1444,7 +1469,7 @@ const AppCore = {
 
         const cur = getCurChar();
         const alertMsg = cur.id === 'shiro'
-          ? `助手よ！${label}経過したホ！タイマーが完了を告げているホ！🔔`
+          ? `助手よ！${label}経過したホ！タイマーが完了を告げているホ！🔔🦉`
           : `おやびん！${label}経ったニャ！タイマー鳴ったニャン🔔🐾`;
 
         this.audio.speak(alertMsg, null, () => {
@@ -1502,13 +1527,89 @@ const AppCore = {
     return t;
   },
 
+  // ★ 案A：話し相手（家族・友人・ゲスト）のバトンタッチ検知＆敬称正規化
+  _detectSpeakerChange(text) {
+    if (!text) return false;
+    const cur = getCurChar();
+
+    // 1. おやびん / 助手への復帰発言
+    if (/(?:おやびんだよ|おやびんに戻る|わたしがおやびん|俺がおやびん|ボクがおやびん|助手だよ|助手にもどる|じょしゅだよ|ただいま|戻ったよ)/i.test(text)) {
+      if (this.state.currentGuestSpeaker || this.state.currentGuestType) {
+        this.updateGuestSpeakerBadge(null);
+        const backMsg = cur.id === 'shiro'
+          ? "お帰りホ、助手！定位置の肩の上に戻るホ！🦉"
+          : "おやびんおかえりニャン！待ってたニャ〜♡🐾";
+        this.audio.speak(backMsg, null, () => this.renderBubble('model', backMsg), () => {
+          this.state.isProcessingInput = false;
+        });
+        return true;
+      }
+    }
+
+    // 2. 幼馴染かまぶーくんのバトンタッチ検知（友人扱い）
+    if (/(?:かまぶー|かますか)/i.test(text) && /(?:だよ|に代わる|にかわる|を紹介|を紹介する|とお話し|とおはなし)/.test(text)) {
+      this.updateGuestSpeakerBadge("friend", "かまぶーくん");
+      const greetMsg = cur.id === 'shiro'
+        ? "おお、かまぶーくんホな！助手の幼馴染・大親友を大歓迎するホ！よろしく頼むホ！🦉"
+        : "わーい！おやびんの大親友のかまぶーくんだニャン！会えて嬉しいニャ！よろしくニャ🐾";
+      this.audio.speak(greetMsg, null, () => this.renderBubble('model', greetMsg), () => {
+        this.state.isProcessingInput = false;
+      });
+      return true;
+    }
+
+    // 3. 家族へのバトンタッチ検知
+    if (/(?:家族|妹|弟|姉|兄|妻|夫|母|父|娘|息子|お母さん|お父さん)/.test(text) && /(?:だよ|に代わる|にかわる|を紹介|とお話し)/.test(text)) {
+      const familyMatch = text.match(/(?:妹|弟|姉|兄|妻|夫|母|父|娘|息子)?の?\s*([A-Za-zぁ-んァ-ヶ一-龠]{2,8}?)\s*(?:さん|ちゃん|くん)?/);
+      const name = (familyMatch && familyMatch[1]) ? familyMatch[1].replace(/おやびん|助手|クロ|シロ/g, '').trim() : "ご家族";
+      this.updateGuestSpeakerBadge("family", name);
+      const greetMsg = cur.id === 'shiro'
+        ? `ホウ！助手の素敵なご家族ホな！助手の相棒・ホウ博士だホ！歓迎するホ！🦉`
+        : `おやびんのご家族ニャ！はじめましてだニャン🐾 よろしくニャ！`;
+      this.audio.speak(greetMsg, null, () => this.renderBubble('model', greetMsg), () => {
+        this.state.isProcessingInput = false;
+      });
+      return true;
+    }
+
+    // 4. 一般友人・ゲストへのバトンタッチ検知
+    const match = text.match(/(?:こちらは|次は|友達の|友人の)?\s*([A-Za-zぁ-んァ-ヶ一-龠]{2,8}?)\s*(?:さん|ちゃん|くん)?\s*(?:に代わる|にかわる|だよ|を紹介|とお話し)/);
+    if (match && match[1]) {
+      const rawName = match[1].replace(/おやびん|助手|クロ|シロ|ホウ博士/g, '').trim();
+      if (rawName.length >= 2) {
+        const isFriend = text.includes("友達") || text.includes("友人");
+        const type = isFriend ? "friend" : "guest";
+        this.updateGuestSpeakerBadge(type, rawName);
+        const greetMsg = cur.id === 'shiro'
+          ? `ホウ！${rawName}ホな！助手の相棒・ホウ博士だホ！歓迎するホ！🦉`
+          : `はじめまして、${rawName}ニャ！おやびんの相棒のクロちゃんだニャン🐾 よろしくニャ！`;
+        this.audio.speak(greetMsg, null, () => this.renderBubble('model', greetMsg), () => {
+          this.state.isProcessingInput = false;
+        });
+        return true;
+      }
+    }
+    return false;
+  },
+
   async handleUserInput(text) {
     this.resetActivityTimer();
+    const nowMs = Date.now();
+    // 30分以上空いての会話再開時は、安全のためおやびん状態へリセット
+    if (this.state.currentGuestType && (nowMs - this.state.lastUserTalkTime) > 30 * 60 * 1000) {
+      this.updateGuestSpeakerBadge(null);
+    }
+    this.state.lastUserTalkTime = nowMs;
     const cur = getCurChar();
+
+    // 話者バトンタッチ（案A）のチェック
+    if (this._detectSpeakerChange(text)) {
+      return;
+    }
 
     if (/(?:タイマー.*(?:止めて|やめて|消して|ストップ)|アラーム.*(?:止めて|消して|ストップ))/.test(text)) {
       this.cancelKitchenTimer(true);
-      const rep = cur.id === 'shiro' ? "タイマーを停止したホ！🔔" : "タイマーを止めたニャン🔔🐾";
+      const rep = cur.id === 'shiro' ? "タイマーを停止したホ！🔔🦉" : "タイマーを止めたニャン🔔🐾";
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
       });
@@ -1533,7 +1634,7 @@ const AppCore = {
       }
 
       const wakeMsg = cur.id === 'shiro'
-        ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
+        ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？🦉"
         : "ふぁ〜あ…！おやびん、起きたニャン🐾 なに話すニャ？";
 
       this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
@@ -1546,10 +1647,10 @@ const AppCore = {
       const isAssistant = this.state.isAssistantMode;
       const guideText = cur.id === 'shiro'
         ? (isAssistant
-            ? "おてつだいモードでは、移動時間や混雑を計算して『近くの公園』『カフェ』『ラーメン』『最新ニュース』を地図付きで案内できるホ！何を調べるホ？"
-            : "なかよしモードでは、『しりとり』『知恵比べクイズ』『お散歩ミッション』『星占い』でボクと勝負できるホ！何をして遊ぶホ？")
+            ? "おてつだいモードでは、移動時間や混雑を計算して『近くの公園』『カフェ』『ラーメン』『最新ニュース』を地図付きで案内できるホ！何を調べるホ？🦉"
+            : "なかよしモードでは、『しりとり』『知恵比べクイズ』『お散歩ミッション』『星占い』でボクと勝負できるホ！何をして遊ぶホ？🦉")
         : (isAssistant
-            ? "おてつだいモードでは、『近くの公園』『評判のカフェ』『美味しいラーメン』『最新ニュース』を地図付きで案内できるニャン👓 何を調べるニャ？"
+            ? "おてつだいモードでは、『近くの公園』『評判のカフェ』『美味しいラーメン』『最新ニュース』を地図付きで案内できるニャン👓 何を調べるニャ？🐾"
             : "なかよしモードでは、『しりとり』『なぞなぞ』『お散歩ミッション』『今日の運勢』で一緒に遊べるニャン🐾 なにして遊ぶニャ？");
 
       this.audio.speak(guideText, null, () => this.renderBubble('model', guideText), () => {
@@ -1570,7 +1671,7 @@ const AppCore = {
       if (res.success && res.diaryText) {
         StorageManager.saveDiary(res.diaryText, timeInfo.lifeLogKey, timeInfo.lifeFullDate, res.selectedPhoto, currentLogs.length, res.kuroComment);
         const rep = cur.id === 'shiro'
-          ? "本日の研究観察日誌を記録したホ！上の『📖 日記帳』から確認できるホ！"
+          ? "本日の研究観察日誌を記録したホ！上の『📖 日記帳』から確認できるホ！🦉"
           : "今日の日記を書き込みましたニャン🐾 上の『📖 日記帳』から読めるニャ！";
 
         this.audio.speak(rep, null, () => {
@@ -1609,7 +1710,7 @@ const AppCore = {
       if (totalSec > 0) {
         this.startKitchenTimer(totalSec, label);
         const rep = cur.id === 'shiro'
-          ? `承知したホ！${label}、正確に計測を開始するホ！`
+          ? `承知したホ！${label}、正確に計測を開始するホ！🦉`
           : `了解ニャ！${label}しっかり見ておくニャン🐾`;
 
         this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
@@ -1625,7 +1726,7 @@ const AppCore = {
       const isAtHome = LocationProvider.isAtHome;
       const currentPlace = LocationProvider.detailedTownArea || `${LocationProvider.cleanCityOnly}付近`;
       const rep = cur.id === 'shiro'
-        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。" : `いまは【${currentPlace}】でフィールドワーク中だホ！`)
+        ? (isAtHome ? "いまは研究所（お家）でまったり待機中だホ！落ち着くホな。🦉" : `いまは【${currentPlace}】でフィールドワーク中だホ！🦉`)
         : (isAtHome ? "いまはお家でぬくぬく、まったりしてるニャン🐾 落ち着くニャ〜♡" : `いまは【${currentPlace}】をお散歩中ニャ！お出かけ楽しいニャン🐾`);
 
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
@@ -1653,7 +1754,7 @@ const AppCore = {
     if (/(?:(?:今日|きょう|いま|現在)?の?(?:天気|気温|温度).*?(?:どれくらい|どう|教えて|なに|何|何度)|(?:天気|気温|温度).*?(?:どう|どんな|教えて)|いま何度|今日何度)/.test(text)) {
       const w = LocationProvider.weather || "快晴";
       const t = LocationProvider.temperature !== null ? `${LocationProvider.temperature}度` : "10度";
-      const suffix = cur.id === 'shiro' ? 'ホ！' : 'ニャン🐾';
+      const suffix = cur.id === 'shiro' ? 'ホ！🦉' : 'ニャン🐾';
       const rep = `きょうは${w}で、気温は${t}だ${suffix}`;
 
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
@@ -1711,7 +1812,6 @@ const AppCore = {
         }
         StorageManager.appendChatLog('model', res.text);
 
-        // ★ 独立TextFormatterにより、画面フキダシにはルビなし表示用テキストを適用
         const displayBubbleText = TextFormatter.formatDisplayText(res.text);
 
         this.audio.speak(res.text, null, () => {
@@ -1744,7 +1844,7 @@ const AppCore = {
         });
       } else {
         const fb = cur.id === 'shiro'
-          ? "助手よ、もう一度明確に話してくれホ！"
+          ? "助手よ、もう一度明確に話してくれホ！🦉"
           : "おやびん、もう一度ゆっくり話してニャン🐾";
 
         if (bubble) bubble.textContent = fb;
@@ -1757,7 +1857,7 @@ const AppCore = {
       }
     } catch (err) {
       const errReply = cur.id === 'shiro'
-        ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！"
+        ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！🦉"
         : "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
 
       if (bubble) bubble.textContent = errReply;
@@ -1817,14 +1917,14 @@ const AppCore = {
     if (this.state.isAssistantMode) {
       if (icon) icon.textContent = "👓"; if (txt) txt.textContent = "おてつだい";
       if (speak) {
-        const rep = cur.id === 'shiro' ? "任せるが良いホ！" : "おまかせニャ！";
+        const rep = cur.id === 'shiro' ? "任せるが良いホ！🦉" : "おまかせニャ！🐾";
         this.triggerActionVoice(rep, `👓 ${rep}`);
       }
     } else {
       if (icon) icon.textContent = cur.id === 'shiro' ? "🦉" : "🐾";
       if (txt) txt.textContent = "なかよし";
       if (speak) {
-        const rep = cur.id === 'shiro' ? "フン、遊んでやるホ！" : "あそぶニャ♪";
+        const rep = cur.id === 'shiro' ? "フン、遊んでやるホ！🦉" : "あそぶニャ♪🐾";
         this.triggerActionVoice(rep, `${icon.textContent} ${rep}`);
       }
     }
@@ -2424,6 +2524,25 @@ const AppCore = {
   },
 
   _bindUI() {
+    // 案A：ゲストピルバッジの解除イベント
+    document.getElementById('guest-pill-close')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.updateGuestSpeakerBadge(null);
+      const cur = getCurChar();
+      const backMsg = cur.id === 'shiro'
+        ? "助手、定位置に戻ったホ！🦉"
+        : "おやびん、ただいまニャン♡🐾";
+      this.audio.speak(backMsg, null, () => this.renderBubble('model', backMsg));
+    });
+    document.getElementById('guest-pill-badge')?.addEventListener('click', () => {
+      this.updateGuestSpeakerBadge(null);
+      const cur = getCurChar();
+      const backMsg = cur.id === 'shiro'
+        ? "助手、定位置に戻ったホ！🦉"
+        : "おやびん、ただいまニャン♡🐾";
+      this.audio.speak(backMsg, null, () => this.renderBubble('model', backMsg));
+    });
+
     document.getElementById('force-refresh-btn')?.addEventListener('click', () => this.forceRefreshApp());
     document.getElementById('diag-force-reload-btn')?.addEventListener('click', () => this.forceRefreshApp());
     document.getElementById('btn-download-backup')?.addEventListener('click', () => StorageManager.downloadDataPackage());
@@ -2549,8 +2668,8 @@ const AppCore = {
 
       const cur = getCurChar();
       const msg = cur.id === 'shiro'
-        ? (this.state.snackCount >= 3 ? "ハフハフ…美味ホ！お腹いっぱい大満足ホ〜パタパタパタ♪" : "もぐもぐ…木の実とお肉は最高ホ！🌰")
-        : (this.state.snackCount >= 3 ? "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡" : "もぐもぐ…ちゅ〜る最高ニャ！🐟");
+        ? (this.state.snackCount >= 3 ? "ハフハフ…美味ホ！お腹いっぱい大満足ホ〜パタパタパタ♪🦉" : "もぐもぐ…木の実とお肉は最高ホ！🌰🦉")
+        : (this.state.snackCount >= 3 ? "ハフハフ…うまうまニャ！お腹いっぱい大満足ニャ〜極楽ニャン♡🐾" : "もぐもぐ…ちゅ〜る最高ニャ！🐟🐾");
 
       if (this.state.snackCount >= 3) { this.state.snackCount = 0; this.audio.playEffect('purr'); }
       this.audio.speak(msg, null, () => this.renderBubble('model', msg), () => {
@@ -2609,7 +2728,7 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('idle');
         const cancelMsg = cur.id === 'shiro' ? "直前の発言を取り消したホ！" : "直前の発言を取り消したニャ！";
         Toast.show(cancelMsg, "info");
-        const ack = cur.id === 'shiro' ? "うむ！" : "はーい！";
+        const ack = cur.id === 'shiro' ? "うむ！🦉" : "はーい！🐾";
         this.triggerActionVoice(ack, "↩️ いまのナシ！");
         return;
       }
@@ -2634,7 +2753,7 @@ const AppCore = {
         if (this.avatar) this.avatar.setEmotion('idle');
         const cancelMsg = cur.id === 'shiro' ? "いまの会話を取り消したホ！" : "いまの会話を取り消したニャ！";
         Toast.show(cancelMsg, "info");
-        const ack = cur.id === 'shiro' ? "うむ！" : "はーい！";
+        const ack = cur.id === 'shiro' ? "うむ！🦉" : "はーい！🐾";
         this.triggerActionVoice(ack, "↩️ いまのナシ！");
         return;
       }
@@ -2645,7 +2764,7 @@ const AppCore = {
       if (this.avatar) this.avatar.setEmotion('idle');
       const waitAck = cur.id === 'shiro' ? "指示を待っているホ！" : "おやびんの声を待ってるニャン♪🐾";
       Toast.show(waitAck, "info");
-      const ackVoice = cur.id === 'shiro' ? "うむ！" : "はーい！";
+      const ackVoice = cur.id === 'shiro' ? "うむ！🦉" : "はーい！🐾";
       this.setStatus('hearing');
       this.triggerActionVoice(ackVoice, `👂 聴いてる${cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪'}`);
     });
@@ -2693,7 +2812,7 @@ const AppCore = {
         this.setStatus('hearing');
 
         const wakeMsg = cur.id === 'shiro'
-          ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？"
+          ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？🦉"
           : "ふぁ〜あ…！おやびん、起きたニャン🐾";
 
         this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
@@ -2741,7 +2860,7 @@ const AppCore = {
       const spk = this.getSpeakerId();
       const cur = getCurChar();
       const testLine = cur.id === 'shiro'
-        ? `助手よ、ボクは${cur.title || cur.name}だホ！`
+        ? `助手よ、ボクは${cur.title || cur.name}だホ！🦉`
         : `おやびん、わたしは${cur.name}だニャン🐾`;
 
       this.audio.speak(testLine, spk);
@@ -2870,7 +2989,7 @@ const AppCore = {
 
       const cur = getCurChar();
       Toast.show(cur.id === 'shiro' ? "設定と記憶を保存したホ！" : "設定と記憶を保存するニャン♪", "success");
-      const ackVoice = cur.id === 'shiro' ? "バッチリホ！" : "バッチリニャ！";
+      const ackVoice = cur.id === 'shiro' ? "バッチリホ！🦉" : "バッチリニャ！🐾";
       this.triggerActionVoice(ackVoice, `💾 ${ackVoice}`);
     });
 
