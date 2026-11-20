@@ -1,13 +1,13 @@
-// [稼働Ver 作業版 Rev.8] 語尾コネ回し全廃・末尾単一アイコン化・架空創作知的好奇心受容・愛され造形100%維持
+// [稼働Ver 作業版 Rev.10] 実写一致スタイリッシュ造形・ヒゲ周り整流化・大きく開く愛らしいお口・自然な腕ラインと思索テイル
 /* ==========================================================================
    キャラクター定義プラグイン: クロちゃん (char_kuro.js)
    - ノルウェージャンフォレストキャット（1歳の女の子・前世は大発明家）
-   - 【昔の愛されアニメーション完全復元】ふさふさ尻尾・胸毛・耳ピクピク・顎あて熟考・バンザイ肉球
+   - 【実写完全一致スタイリッシュ造形】気品ある立ち姿・首元から胸に広がる豊かなシルバー胸毛・澄んだゴールドライムアイ・極太ロングテイル
+   - 【写真3枚目完全再現Happyポーズ】立ち上がって両手を高くバンザイ、ピンク肉球全開＆満面の笑み
    - 飼い主さんのことを「おやびん」と呼び、座ると膝の上、寝転ぶとおなかに乗ってくる甘えん坊
    - VOICEVOX 話者ID: 10（雨晴はう）推奨
    - 【セリフ加工の完全全廃】プログラムによる語尾のコネ回し・捏造を撤廃し、末尾にアイコン（🐾）を1つ添える透明設計
    - 【未知の話題・創作タイトルの完全受容】「ゴジラ-0」「ゴジラ-0.0」等の架空タイトルや冗談も勝手に訂正・無視せず、目を輝かせて乗っかる愛らしい子猫姿勢
-   - 【タイトルの二重反復禁止】1文の中で同じ作品名をくどく繰り返さない自然な対話原則
    ========================================================================== */
 
 window.Character_Kuro = {
@@ -155,212 +155,275 @@ ${modeBlock}
 ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せな一日だったニャン🐾'}`;
   },
 
-  // ★ 昔の愛されベクターSVGアバター（完全復元版）
+  // ★ 実写完全一致スタイリッシュ・ベクターSVGアバター（写真1〜4枚目完全再現）
   getVectorAvatarSvg() {
     return `
-      <svg viewBox="0 0 200 240" id="cat-vector-avatar" style="width:280px; height:320px; position:absolute; bottom:0; left:50%; transform:translateX(-50%); transform-origin:bottom center; z-index:10; pointer-events:none;">
+      <svg viewBox="0 0 220 250" id="cat-vector-avatar" style="width:290px; height:330px; position:absolute; bottom:0; left:50%; transform:translateX(-50%); transform-origin:bottom center; z-index:10; pointer-events:none;">
         <defs>
-          <radialGradient id="grad-kuro-fur-main" cx="50%" cy="35%" r="65%">
-            <stop offset="0%" stop-color="#2d3748"/>
-            <stop offset="45%" stop-color="#1a202c"/>
-            <stop offset="85%" stop-color="#0f172a"/>
+          <!-- 漆黒＆ダークチャコールの豊かなシルキー被毛 -->
+          <radialGradient id="grad-kuro-fur-main" cx="50%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#334155"/>
+            <stop offset="35%" stop-color="#1e293b"/>
+            <stop offset="70%" stop-color="#0f172a"/>
             <stop offset="100%" stop-color="#020617"/>
           </radialGradient>
 
+          <!-- 実写完全一致：首元から胸に広がる豊かなシルバーホワイト胸毛（多層グラデーション） -->
           <linearGradient id="grad-kuro-chest-silver" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#f8fafc"/>
-            <stop offset="40%" stop-color="#e2e8f0"/>
-            <stop offset="80%" stop-color="#cbd5e1"/>
-            <stop offset="100%" stop-color="#94a3b8"/>
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="25%" stop-color="#f1f5f9"/>
+            <stop offset="55%" stop-color="#cbd5e1"/>
+            <stop offset="85%" stop-color="#94a3b8"/>
+            <stop offset="100%" stop-color="#64748b"/>
           </linearGradient>
 
-          <radialGradient id="grad-kuro-big-eye" cx="42%" cy="36%" r="60%">
-            <stop offset="0%" stop-color="#a7f3d0"/>
-            <stop offset="25%" stop-color="#34d399"/>
-            <stop offset="65%" stop-color="#059669"/>
-            <stop offset="90%" stop-color="#064e3b"/>
-            <stop offset="100%" stop-color="#022c22"/>
+          <!-- 実写完全一致：ゴールドがかった澄んだ黄緑色の美しい瞳（ゴールドライムアイ） -->
+          <radialGradient id="grad-kuro-gold-lime-eye" cx="42%" cy="36%" r="62%">
+            <stop offset="0%" stop-color="#fef08a"/>
+            <stop offset="25%" stop-color="#d9f99d"/>
+            <stop offset="55%" stop-color="#84cc16"/>
+            <stop offset="85%" stop-color="#4d7c0f"/>
+            <stop offset="100%" stop-color="#1a2e05"/>
           </radialGradient>
 
+          <!-- 耳内側のベビーピンクグラデーション -->
           <linearGradient id="grad-kuro-ear-inner" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="#fbcfe8"/>
-            <stop offset="70%" stop-color="#f472b6"/>
-            <stop offset="100%" stop-color="#db2777"/>
+            <stop offset="65%" stop-color="#f472b6"/>
+            <stop offset="100%" stop-color="#be185d"/>
+          </linearGradient>
+
+          <!-- ふさふさ毛並みテクスチャ -->
+          <linearGradient id="grad-kuro-tail-highlight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#94a3b8" stop-opacity="0.45"/>
+            <stop offset="50%" stop-color="#64748b" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
           </linearGradient>
         </defs>
 
-        <!-- 1. 待機ポーズ (idle: ふさふさ尻尾・モフモフ胸毛・穏やかな佇まい) -->
+        <!-- 1. 待機ポーズ (idle: 写真1枚目完全再現。気品ある立ち座り姿・足元を包む豊かな極太尾・美胸毛) -->
         <g id="pose-idle" class="pose-group">
-          <!-- ふさふさ尻尾 (優雅な揺らぎ) -->
+          <!-- 極太ふさふさロングテイル (足元を優雅に包み込む) -->
           <g class="anim-idle-tail">
-            <path d="M125 195 C150 190 178 175 186 148 C192 125 180 102 165 95 C154 90 144 98 148 108 C154 122 170 134 165 152 C160 168 138 182 120 188 Z" fill="url(#grad-kuro-fur-main)"/>
-            <path d="M165 95 C178 108 174 130 162 144 C152 134 154 115 165 95 Z" fill="#94a3b8" opacity="0.4"/>
+            <path d="M125 198 C158 194 192 178 200 145 C208 116 194 88 174 80 C160 74 148 84 154 98 C162 116 182 130 176 154 C168 174 142 188 120 192 Z" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M174 80 C190 96 186 125 170 144 C158 132 160 108 174 80 Z" fill="url(#grad-kuro-tail-highlight)"/>
+            <!-- しっぽの毛並みハイライト -->
+            <path d="M145 190 Q170 180 185 155 Q195 130 180 105" stroke="#94a3b8" stroke-width="1.6" fill="none" opacity="0.35" stroke-linecap="round"/>
           </g>
 
-          <!-- 体幹 (ふっくらボディー) -->
+          <!-- スタイリッシュで引き締まった体躯 -->
           <g class="anim-idle-body">
-            <ellipse cx="100" cy="162" rx="56" ry="60" fill="url(#grad-kuro-fur-main)"/>
-            <!-- ノルウェージャン特有の豊かなシルバー胸毛 -->
-            <path class="anim-idle-ruff" d="M80 128 C80 128 68 145 74 160 C80 172 92 178 100 182 C108 178 120 172 126 160 C132 145 120 128 120 128 C115 138 108 145 100 146 C92 145 85 138 80 128 Z" fill="url(#grad-kuro-chest-silver)"/>
+            <ellipse cx="110" cy="162" rx="64" ry="68" fill="url(#grad-kuro-fur-main)"/>
+
+            <!-- ゴージャスなシルバー胸毛（写真1枚目通りの立体レイヤー） -->
+            <g class="anim-idle-ruff">
+              <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 C132 135 122 146 110 148 C98 146 88 135 82 122 Z" fill="url(#grad-kuro-chest-silver)"/>
+              <path d="M92 128 C84 140 80 156 88 168 C96 178 104 182 110 184 C116 182 124 178 132 168 C140 156 136 140 128 128 C122 138 116 145 110 146 C104 145 98 138 92 128 Z" fill="#ffffff" opacity="0.8"/>
+            </g>
           </g>
 
-          <!-- 前足 (ちょこんと揃えた手元) -->
-          <ellipse cx="80" cy="216" rx="11" ry="8" fill="#1e293b"/>
-          <ellipse cx="120" cy="216" rx="11" ry="8" fill="#1e293b"/>
+          <!-- 前足（すらりと気品よく揃えた手元） -->
+          <g>
+            <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
+            <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
+            <line x1="85" y1="222" x2="85" y2="231" stroke="#334155" stroke-width="1.2"/>
+            <line x1="91" y1="222" x2="91" y2="231" stroke="#334155" stroke-width="1.2"/>
+            <line x1="129" y1="222" x2="129" y2="231" stroke="#334155" stroke-width="1.2"/>
+            <line x1="135" y1="222" x2="135" y2="231" stroke="#334155" stroke-width="1.2"/>
+          </g>
         </g>
 
-        <!-- 2. お話しポーズ (talking: リズミカルな尻尾とお口の連動) -->
+        <!-- 2. お話しポーズ (talking: 写真2枚目完全再現。胸を張った立ち姿・上に掲げた極太尾・生き生きした口元) -->
         <g id="pose-talking" class="pose-group">
-          <!-- リズミカルに弾む尻尾 -->
+          <!-- 上にふわりと掲げた優美なしっぽ -->
           <g class="anim-talking-tail">
-            <path d="M136 175 C162 168 186 150 190 125 C194 105 180 88 166 84 C154 80 146 90 150 100 C156 114 174 125 168 142 C162 155 145 165 130 170 Z" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M145 178 C176 168 206 145 210 115 C214 90 196 68 180 64 C166 60 156 72 162 84 C170 102 192 116 186 138 C180 154 158 168 140 174 Z" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M180 64 C198 80 192 108 178 126 C166 114 168 90 180 64 Z" fill="url(#grad-kuro-tail-highlight)"/>
           </g>
-          <ellipse cx="100" cy="162" rx="56" ry="60" fill="url(#grad-kuro-fur-main)"/>
-          <path d="M80 128 C80 128 68 145 74 160 C80 172 92 178 100 182 C108 178 120 172 126 160 C132 145 120 128 120 128 C115 138 108 145 100 146 C92 145 85 138 80 128 Z" fill="url(#grad-kuro-chest-silver)"/>
-          <ellipse cx="80" cy="216" rx="11" ry="8" fill="#1e293b"/>
-          <ellipse cx="120" cy="216" rx="11" ry="8" fill="#1e293b"/>
+          <ellipse cx="110" cy="162" rx="64" ry="68" fill="url(#grad-kuro-fur-main)"/>
+          <g>
+            <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 C132 135 122 146 110 148 C98 146 88 135 82 122 Z" fill="url(#grad-kuro-chest-silver)"/>
+            <path d="M92 128 C84 140 80 156 88 168 C96 178 104 182 110 184 C116 182 124 178 132 168 C140 156 136 140 128 128 Z" fill="#ffffff" opacity="0.8"/>
+          </g>
+          <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
+          <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
         </g>
 
-        <!-- 3. 考え中ポーズ (thinking: コテンと首かしげ ＆ 前足を顎に当てる熟考) -->
+        <!-- 3. 考え中ポーズ (thinking: 優美な極太ロングテイル・自然に繋がる前脚・顎に添える手先) -->
         <g id="pose-thinking" class="pose-group">
-          <path d="M125 195 C145 192 170 180 176 158 C180 140 170 125 158 120 C148 116 142 124 145 132 C150 144 162 152 156 165 C150 176 135 184 122 188 Z" fill="url(#grad-kuro-fur-main)"/>
-          <ellipse cx="100" cy="162" rx="56" ry="60" fill="url(#grad-kuro-fur-main)"/>
-          <path d="M80 128 C80 128 68 145 74 160 C80 172 92 178 100 182 C108 178 120 172 126 160 C132 145 120 128 120 128 Z" fill="url(#grad-kuro-chest-silver)"/>
-          <ellipse cx="120" cy="216" rx="11" ry="8" fill="#1e293b"/>
-          <!-- 顎元に前足を添えて愛らしく思索 -->
-          <g class="anim-thinking-paw">
-            <ellipse cx="78" cy="142" rx="12" ry="10" fill="#1e293b" stroke="#334155" stroke-width="1.2"/>
-            <circle cx="74" cy="142" r="3.2" fill="#f472b6"/>
-            <circle cx="79" cy="138" r="2.2" fill="#f472b6"/>
-            <circle cx="83" cy="142" r="2.2" fill="#f472b6"/>
+          <!-- 考え中もIdleと統一した極太ふさふさロングテイル（先端が思案するようにゆっくりトントン揺れる） -->
+          <g class="anim-thinking-tail">
+            <path d="M125 198 C158 194 192 178 200 145 C208 116 194 88 174 80 C160 74 148 84 154 98 C162 116 182 130 176 154 C168 174 142 188 120 192 Z" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M174 80 C190 96 186 125 170 144 C158 132 160 108 174 80 Z" fill="url(#grad-kuro-tail-highlight)"/>
+            <path d="M145 190 Q170 180 185 155 Q195 130 180 105" stroke="#94a3b8" stroke-width="1.6" fill="none" opacity="0.35" stroke-linecap="round"/>
+          </g>
+
+          <!-- 体幹と胸毛 -->
+          <ellipse cx="110" cy="162" rx="64" ry="68" fill="url(#grad-kuro-fur-main)"/>
+          <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 Z" fill="url(#grad-kuro-chest-silver)"/>
+
+          <!-- どっしり支える右前足 -->
+          <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
+
+          <!-- 写真4枚目完全再現：体幹から自然につながる左前脚の腕ライン＆顎元に添える肉球 -->
+          <g class="anim-thinking-arm">
+            <!-- 胴体から顎下へと流れる自然な前脚の腕 -->
+            <path d="M78 212 C72 185 70 155 86 136 C92 142 94 165 92 195 C90 214 84 218 78 212 Z" fill="url(#grad-kuro-fur-main)"/>
+            <!-- 顎元に優雅に添える手先とふっくらピンク肉球 -->
+            <ellipse cx="88" cy="132" rx="13" ry="10" fill="#1e293b" stroke="#334155" stroke-width="1.3"/>
+            <circle cx="84" cy="132" r="3.4" fill="#f472b6"/>
+            <circle cx="89" cy="128" r="2.5" fill="#f472b6"/>
+            <circle cx="93" cy="132" r="2.5" fill="#f472b6"/>
           </g>
         </g>
 
-        <!-- 4. 喜びポーズ (happy: 両手バンザイ肉球パタパタ ＆ 尻尾大揺れ！) -->
+        <!-- 4. 喜びポーズ (happy: 写真3枚目完全再現！立ち上がり両手を高くバンザイ・ピンク肉球全開・満面笑顔！) -->
         <g id="pose-happy" class="pose-group">
-          <!-- 喜びの大揺れ尻尾 -->
+          <!-- 左に大きく弧を描くダイナミックな極太ロングテイル（写真3枚目） -->
           <g class="anim-happy-tail">
-            <path d="M136 175 C168 165 196 140 198 110 C200 86 182 68 165 65 C150 62 142 74 148 86 C156 102 180 114 174 135 C168 150 148 164 130 170 Z" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M90 205 C50 198 12 160 8 115 C4 75 32 40 56 34 C72 30 84 46 76 62 C64 88 32 110 44 146 C54 175 80 194 100 200 Z" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M56 34 C35 55 42 90 62 116 C78 98 72 65 56 34 Z" fill="url(#grad-kuro-tail-highlight)"/>
           </g>
-          <ellipse cx="100" cy="162" rx="56" ry="60" fill="url(#grad-kuro-fur-main)"/>
-          <path d="M80 128 C80 128 68 145 74 160 C80 172 92 178 100 182 C108 178 120 172 126 160 C132 145 120 128 120 128 Z" fill="url(#grad-kuro-chest-silver)"/>
-          <ellipse cx="80" cy="218" rx="10" ry="7" fill="#1e293b"/>
-          <ellipse cx="120" cy="218" rx="10" ry="7" fill="#1e293b"/>
 
-          <!-- 両手バンザイ肉球パタパタ大喜び！ -->
+          <!-- スクッと二足立ちしたスタイリッシュなボディ -->
+          <g class="anim-happy-body">
+            <ellipse cx="110" cy="165" rx="62" ry="70" fill="url(#grad-kuro-fur-main)"/>
+            <path d="M82 125 C70 140 64 160 72 178 C80 192 95 200 110 202 C125 200 140 192 148 178 C156 160 150 140 138 125 C132 138 122 150 110 152 C98 150 88 138 82 125 Z" fill="url(#grad-kuro-chest-silver)"/>
+          </g>
+
+          <!-- しっかりと大地を踏みしめる後ろ足 -->
+          <ellipse cx="90" cy="235" rx="14" ry="9" fill="#1e293b"/>
+          <ellipse cx="130" cy="235" rx="14" ry="9" fill="#1e293b"/>
+
+          <!-- 写真3枚目完全一致：両手を頭より高く斜め上にバンザイ！ピンクの肉球全開！ -->
           <g class="anim-happy-arms">
-            <!-- 左前足バンザイ -->
-            <g transform="translate(48, 120)">
-              <ellipse cx="0" cy="0" rx="14" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.2"/>
-              <ellipse cx="0" cy="1" rx="6.5" ry="5.2" fill="#f472b6"/>
-              <circle cx="-6" cy="-4" r="2.6" fill="#f472b6"/>
-              <circle cx="0" cy="-7" r="2.8" fill="#f472b6"/>
-              <circle cx="6" cy="-4" r="2.6" fill="#f472b6"/>
+            <!-- 左前手バンザイ -->
+            <g transform="translate(48, 88) rotate(-24)">
+              <path d="M-8 35 C-12 18 -10 -2 0 -12 C10 -2 12 18 8 35 Z" fill="url(#grad-kuro-fur-main)"/>
+              <ellipse cx="0" cy="-12" rx="16" ry="14" fill="#1e293b" stroke="#334155" stroke-width="1.4"/>
+              <!-- ふっくらピンクの掌球 -->
+              <ellipse cx="0" cy="-10" rx="7.8" ry="6.2" fill="#f472b6"/>
+              <!-- 4つの可愛い指球 -->
+              <circle cx="-8" cy="-18" r="3.2" fill="#f472b6"/>
+              <circle cx="-3" cy="-22" r="3.4" fill="#f472b6"/>
+              <circle cx="3" cy="-22" r="3.4" fill="#f472b6"/>
+              <circle cx="8" cy="-18" r="3.2" fill="#f472b6"/>
             </g>
-            <!-- 右前足バンザイ -->
-            <g transform="translate(152, 120)">
-              <ellipse cx="0" cy="0" rx="14" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.2"/>
-              <ellipse cx="0" cy="1" rx="6.5" ry="5.2" fill="#f472b6"/>
-              <circle cx="-6" cy="-4" r="2.6" fill="#f472b6"/>
-              <circle cx="0" cy="-7" r="2.8" fill="#f472b6"/>
-              <circle cx="6" cy="-4" r="2.6" fill="#f472b6"/>
+            <!-- 右前手バンザイ -->
+            <g transform="translate(172, 88) rotate(24)">
+              <path d="M-8 35 C-12 18 -10 -2 0 -12 C10 -2 12 18 8 35 Z" fill="url(#grad-kuro-fur-main)"/>
+              <ellipse cx="0" cy="-12" rx="16" ry="14" fill="#1e293b" stroke="#334155" stroke-width="1.4"/>
+              <!-- ふっくらピンクの掌球 -->
+              <ellipse cx="0" cy="-10" rx="7.8" ry="6.2" fill="#f472b6"/>
+              <!-- 4つの可愛い指球 -->
+              <circle cx="-8" cy="-18" r="3.2" fill="#f472b6"/>
+              <circle cx="-3" cy="-22" r="3.4" fill="#f472b6"/>
+              <circle cx="3" cy="-22" r="3.4" fill="#f472b6"/>
+              <circle cx="8" cy="-18" r="3.2" fill="#f472b6"/>
             </g>
           </g>
         </g>
 
-        <!-- 頭部ユニット（お耳ピクピク・瞬き・お口パクパク連動） -->
+        <!-- 頭部ユニット（気品あるスタイリッシュ小顔・ピンと立った耳・ゴールドライムアイ） -->
         <g id="head-unit" class="anim-idle-head">
-          <!-- 左耳 (ピクピク動く) -->
+          <!-- スタイリッシュでピンと立った左耳 -->
           <g class="anim-ear-l">
-            <polygon points="50,82 66,28 92,72" fill="url(#grad-kuro-fur-main)"/>
-            <polygon points="56,78 68,38 86,72" fill="url(#grad-kuro-ear-inner)"/>
-            <!-- 耳毛ふさふさ -->
-            <path d="M54 75 Q68 55 60 42" stroke="#e2e8f0" stroke-width="2" fill="none" opacity="0.8"/>
+            <polygon points="56,84 74,24 102,74" fill="url(#grad-kuro-fur-main)"/>
+            <polygon points="62,80 76,34 96,74" fill="url(#grad-kuro-ear-inner)"/>
+            <!-- 繊細な耳毛 -->
+            <path d="M60 76 Q76 52 68 38" stroke="#ffffff" stroke-width="2.2" fill="none" opacity="0.85"/>
           </g>
 
-          <!-- 右耳 (ピクピク動く) -->
+          <!-- スタイリッシュでピンと立った右耳 -->
           <g class="anim-ear-r">
-            <polygon points="150,82 134,28 108,72" fill="url(#grad-kuro-fur-main)"/>
-            <polygon points="144,78 132,38 114,72" fill="url(#grad-kuro-ear-inner)"/>
-            <!-- 耳毛ふさふさ -->
-            <path d="M146 75 Q132 55 140 42" stroke="#e2e8f0" stroke-width="2" fill="none" opacity="0.8"/>
+            <polygon points="164,84 146,24 118,74" fill="url(#grad-kuro-fur-main)"/>
+            <polygon points="158,80 144,34 124,74" fill="url(#grad-kuro-ear-inner)"/>
+            <!-- 繊細な耳毛 -->
+            <path d="M160 76 Q144 52 152 38" stroke="#ffffff" stroke-width="2.2" fill="none" opacity="0.85"/>
           </g>
 
-          <!-- まんまる小顔輪郭 -->
-          <circle cx="100" cy="94" r="48" fill="url(#grad-kuro-fur-main)"/>
-          <!-- ほっぺのふさふさ毛 -->
-          <path d="M54 98 C42 104 46 116 58 122 C52 114 54 105 54 98 Z" fill="url(#grad-kuro-fur-main)"/>
-          <path d="M146 98 C158 104 154 116 142 122 C148 114 146 105 146 98 Z" fill="url(#grad-kuro-fur-main)"/>
+          <!-- 美しい輪郭の小顔（ヒゲ周りをすっきり整流化） -->
+          <circle cx="110" cy="94" r="46" fill="url(#grad-kuro-fur-main)"/>
+          <!-- 流麗で上品な頬の毛並みライン（外ハネ突起を廃しフェイスラインに調和） -->
+          <path d="M66 98 C56 104 58 114 68 118 Z" fill="url(#grad-kuro-fur-main)"/>
+          <path d="M154 98 C164 104 162 114 152 118 Z" fill="url(#grad-kuro-fur-main)"/>
 
-          <!-- エメラルドグリーンの大きな瞳 (中心軸固定・自然な瞬き) -->
-          <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 100px 92px;">
+          <!-- 実写完全一致：澄んだゴールドライムアイ（全ポーズ自然瞬き対応） -->
+          <g id="eyes-normal" class="cat-eye-blink" style="transform-origin: 110px 92px;">
             <!-- 左目 -->
-            <circle cx="78" cy="92" r="14.5" fill="url(#grad-kuro-big-eye)"/>
-            <ellipse cx="78" cy="92" rx="6.5" ry="12" fill="#090d16"/>
-            <!-- 宝石のようなハイライト -->
-            <circle cx="74" cy="87" r="4.0" fill="#ffffff"/>
-            <circle cx="82" cy="96" r="2.0" fill="#ffffff" opacity="0.9"/>
-            <circle cx="74" cy="96" r="1.2" fill="#ffffff" opacity="0.7"/>
+            <ellipse cx="89" cy="92" rx="12.2" ry="12.0" fill="url(#grad-kuro-gold-lime-eye)"/>
+            <ellipse cx="89" cy="92" rx="5.6" ry="10.5" fill="#090d16"/>
+            <!-- 宝石のような多層ハイライト -->
+            <circle cx="85.5" cy="87.5" r="3.6" fill="#ffffff"/>
+            <circle cx="92.5" cy="95.5" r="1.8" fill="#ffffff" opacity="0.95"/>
+            <circle cx="86" cy="95.5" r="1.1" fill="#ffffff" opacity="0.75"/>
 
             <!-- 右目 -->
-            <circle cx="122" cy="92" r="14.5" fill="url(#grad-kuro-big-eye)"/>
-            <ellipse cx="122" cy="92" rx="6.5" ry="12" fill="#090d16"/>
-            <!-- 宝石のようなハイライト -->
-            <circle cx="118" cy="87" r="4.0" fill="#ffffff"/>
-            <circle cx="126" cy="96" r="2.0" fill="#ffffff" opacity="0.9"/>
-            <circle cx="118" cy="96" r="1.2" fill="#ffffff" opacity="0.7"/>
+            <ellipse cx="131" cy="92" rx="12.2" ry="12.0" fill="url(#grad-kuro-gold-lime-eye)"/>
+            <ellipse cx="131" cy="92" rx="5.6" ry="10.5" fill="#090d16"/>
+            <!-- 宝石のような多層ハイライト -->
+            <circle cx="127.5" cy="87.5" r="3.6" fill="#ffffff"/>
+            <circle cx="134.5" cy="95.5" r="1.8" fill="#ffffff" opacity="0.95"/>
+            <circle cx="128" cy="95.5" r="1.1" fill="#ffffff" opacity="0.75"/>
           </g>
 
-          <!-- にっこり目（happy用） -->
+          <!-- にっこり細めた満面の笑顔の瞳（写真3枚目のHappy用） -->
           <g id="eyes-happy" style="display:none;">
-            <path d="M66 94 Q78 80 90 94" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-            <path d="M66 94 Q78 80 90 94" stroke="#a7f3d0" stroke-width="2.0" stroke-linecap="round" fill="none"/>
-            <path d="M110 94 Q122 80 134 94" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-            <path d="M110 94 Q122 80 134 94" stroke="#a7f3d0" stroke-width="2.0" stroke-linecap="round" fill="none"/>
+            <path d="M78 94 Q89 80 100 94" stroke="#84cc16" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+            <path d="M78 94 Q89 80 100 94" stroke="#fef08a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <path d="M120 94 Q131 80 142 94" stroke="#84cc16" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+            <path d="M120 94 Q131 80 142 94" stroke="#fef08a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
           </g>
 
-          <!-- ピンクの小さな鼻 -->
-          <polygon points="97,103 103,103 100,108" fill="#f472b6"/>
+          <!-- ピンクの上品な小鼻 -->
+          <polygon points="107,103 113,103 110,107.5" fill="#f472b6"/>
 
-          <!-- お口の造形 -->
+          <!-- 待機中の可愛いお口 -->
           <g id="mouth-closed">
-            <path d="M93 109 Q97 113 100 109 Q103 113 107 109" stroke="#94a3b8" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path d="M103 109 Q107 112.5 110 109 Q113 112.5 117 109" stroke="#94a3b8" stroke-width="1.8" fill="none" stroke-linecap="round"/>
           </g>
+          <!-- お話し中のお口（大きく開いてピンクの舌が覗く愛らしく元気な口パク造形） -->
           <g id="mouth-talking" class="mouth-talking" style="display:none;">
-            <path d="M94 109 Q100 120 106 109 Z" fill="#e11d48"/>
-            <path d="M96 110 Q100 114 104 110" stroke="#fda4af" stroke-width="1.2" fill="none"/>
+            <!-- 開いたお口の奥行き -->
+            <path d="M101 109 Q110 125 119 109 Z" fill="#9f1239"/>
+            <!-- 可愛らしく覗くピンクの舌 -->
+            <path d="M104 115 Q110 123 116 115 Z" fill="#f472b6"/>
+            <!-- 上唇の愛らしいハイライトライン -->
+            <path d="M102 109 Q106 112 110 109.5 Q114 112 118 109" stroke="#cbd5e1" stroke-width="1.3" fill="none" stroke-linecap="round"/>
           </g>
+          <!-- 写真3枚目：満面の笑みで開いたお口（Happy用） -->
           <g id="mouth-happy" style="display:none;">
-            <path d="M93 109 Q100 124 107 109 Z" fill="#f43f5e"/>
+            <path d="M102 109 Q110 126 118 109 Z" fill="#f43f5e"/>
+            <path d="M105 114 Q110 122 115 114" fill="#fda4af"/>
           </g>
 
-          <!-- 白くてピンとしたヒゲ -->
-          <g stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" opacity="0.85">
-            <line x1="68" y1="104" x2="42" y2="98"/>
-            <line x1="67" y1="108" x2="40" y2="109"/>
-            <line x1="68" y1="112" x2="44" y2="119"/>
-            <line x1="132" y1="104" x2="158" y2="98"/>
-            <line x1="133" y1="108" x2="160" y2="109"/>
-            <line x1="132" y1="112" x2="156" y2="119"/>
+          <!-- ピンと伸びた誇り高い白ヒゲ -->
+          <g stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" opacity="0.9">
+            <line x1="78" y1="104" x2="48" y2="98"/>
+            <line x1="77" y1="108" x2="46" y2="109"/>
+            <line x1="78" y1="112" x2="50" y2="119"/>
+            <line x1="142" y1="104" x2="172" y2="98"/>
+            <line x1="143" y1="108" x2="174" y2="109"/>
+            <line x1="142" y1="112" x2="170" y2="119"/>
           </g>
 
           <!-- おてつだいモード装飾（ベクター用メガネ＆帽子） -->
           <g id="cat-vector-accessories" style="display:none;">
             <g id="vec-acc-glasses">
-              <circle cx="78" cy="92" r="18" fill="rgba(255, 255, 255, 0.15)" stroke="#090d16" stroke-width="3.5"/>
-              <circle cx="122" cy="92" r="18" fill="rgba(255, 255, 255, 0.15)" stroke="#090d16" stroke-width="3.5"/>
-              <path d="M96 90 Q100 86 104 90" stroke="#090d16" stroke-width="3.5" fill="none"/>
-              <line x1="60" y1="92" x2="50" y2="90" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="140" y1="92" x2="150" y2="90" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="89" cy="92" r="17" fill="rgba(255, 255, 255, 0.15)" stroke="#090d16" stroke-width="3.5"/>
+              <circle cx="131" cy="92" r="17" fill="rgba(255, 255, 255, 0.15)" stroke="#090d16" stroke-width="3.5"/>
+              <path d="M106 90 Q110 86 114 90" stroke="#090d16" stroke-width="3.5" fill="none"/>
+              <line x1="72" y1="92" x2="60" y2="90" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="148" y1="92" x2="160" y2="90" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
             </g>
 
             <g id="vec-acc-hat">
-              <path d="M76 48 Q100 42 124 48 L122 54 Q100 48 78 54 Z" fill="#1e293b"/>
-              <polygon points="100,24 144,38 100,50 56,38" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
-              <circle cx="100" cy="38" r="3" fill="#eab308"/>
+              <path d="M86 48 Q110 42 134 48 L132 54 Q110 48 88 54 Z" fill="#1e293b"/>
+              <polygon points="110,24 154,38 110,50 66,38" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+              <circle cx="110" cy="38" r="3" fill="#eab308"/>
               <g class="mortar-tassel">
-                <path d="M100 38 Q124 40 130 58" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
-                <polygon points="127,58 133,58 135,72 125,72" fill="#eab308"/>
+                <path d="M110 38 Q134 40 140 58" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
+                <polygon points="137,58 143,58 145,72 135,72" fill="#eab308"/>
               </g>
             </g>
           </g>
