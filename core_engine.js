@@ -1,8 +1,9 @@
-// [稼働Ver 作業版 Rev.9] 直近写真キャッシュ＆継続対話エンジン・二重敬称正規化・表示読みJSON完全分離・VOICEVOXローカル待機5.5s・写真日付ロック厳格化
+// [稼働Ver 作業版 Rev.10] 映画名読み上げ強化・直近写真キャッシュ継続対話・表示読みJSON完全分離・VOICEVOXローカル待機5.5s・写真日付ロック厳格化
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS (core_engine.js)
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
+   - 【映画名・固有名詞読み上げ強化】ゴジラ-0（マイナスゼロ）、ゴジラ-1.0等の表記・音声認識ゆれを100%安定発音化
    - 【直近写真継続対話エンジン】撮影後30分以内の写真キャッシュ管理、写真に関する話題（何色、どこ、これ等）のインテリジェント判定
    - 【二重敬称正規化エンジン】相手の敬称（くん/ちゃん/さん/様）を自動判別し、「かまぶーくんさん」などの二重重ねを物理防止
    - 【表示読みJSON完全分離エンジン】GeminiのJSON構造（display / speech）をパースし、画面表示と発音を100%整合
@@ -61,6 +62,12 @@ const TextFormatter = {
         if (match) t = match[1];
       }
     }
+
+    // ★ 映画名・固有名詞の特殊発音正規化（ゴジラシリーズ等の確実な読み上げ）
+    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:0(?:\.0)?|ゼロ|ぜろ)/gui, 'ゴジラマイナスゼロ');
+    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:1(?:\.0)?|ワン|わん)/gui, 'ゴジラマイナスワン');
+    t = t.replace(/ゴジラ\s*マイナス\s*(?:0|ゼロ|ぜろ)/gui, 'ゴジラマイナスゼロ');
+    t = t.replace(/ゴジラ\s*マイナス\s*(?:1|ワン|わん)/gui, 'ゴジラマイナスワン');
 
     // 通常テキストの場合のルビ・括弧解析フォールバック
     t = t.replace(/[『「【《〈][^『「【《〈）)]+[（(]([ぁ-んァ-ヶー\s・\d]+)[）)][』」】》〉]/gu, ' $1 ');
@@ -525,9 +532,12 @@ class AudioSpeechEngine {
     const cur = getCurChar();
     let t = cur.correctSpeechInput ? cur.correctSpeechInput(text) : text;
 
+    // 音声認識の一般的な誤変換ゆれ補正
     t = t.replace(/(?:マネスク|まねすく|まねす)/gu, 'マイナス');
-    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:0(?:\.0)?|ゼロ|ぜろ)/gu, 'ゴジラ-0');
-    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:1(?:\.0)?|ワン|わん)/gu, 'ゴジラ-1.0');
+    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:0(?:\.0)?|ゼロ|ぜろ)/gui, 'ゴジラ-0');
+    t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:1(?:\.0)?|ワン|わん)/gui, 'ゴジラ-1.0');
+    t = t.replace(/ゴジラ\s*マイナス\s*(?:0|ゼロ|ぜろ)/gui, 'ゴジラ-0');
+    t = t.replace(/ゴジラ\s*マイナス\s*(?:1|ワン|わん)/gui, 'ゴジラ-1.0');
 
     const customDict = StorageManager.loadCustomDictionary();
     if (Array.isArray(customDict) && customDict.length > 0) {
@@ -1798,7 +1808,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.3.1",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.3.2",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
