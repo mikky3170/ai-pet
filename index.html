@@ -1,4 +1,4 @@
-<!-- [稼働Ver 作業版 Rev.4] v1.3.0 キャッシュバスター完全整合・話者ゲスト解除ピルバッジ配備・全UI整合性100%維持 -->
+<!-- [稼働Ver 作業版 Rev.6] 話者ゲスト切替ピルバッジ完全撤廃・おやびん1対1対話原点回帰・全UIデザイン100%維持 -->
 <!DOCTYPE html>
 <html lang="ja" data-theme="normal">
 <head>
@@ -19,7 +19,7 @@
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
   <!-- スタイルシート読み込み -->
-  <link rel="stylesheet" href="style.css?v=v1.3.0">
+  <link rel="stylesheet" href="style.css?v=v1.4.0">
 </head>
 <body>
 
@@ -46,12 +46,8 @@
           </div>
         </div>
 
-        <!-- 中央：状態がひと目でわかるステータスバッジ（ゲスト認識時は話者ピルが隣接表示） -->
+        <!-- 中央：状態がひと目でわかるステータスバッジ（本来のクリアな中央配置） -->
         <div id="status-badge-container">
-          <div id="guest-pill-badge" class="guest-pill-badge" style="display:none;" title="タップでおやびんに戻すニャ！">
-            <span id="guest-pill-name">👤 ゲスト</span>
-            <button type="button" id="guest-pill-close" class="btn-guest-pill-close">✕</button>
-          </div>
           <span id="status-text" class="status-hearing">👂 聴いてるニャ♪</span>
         </div>
 
@@ -317,10 +313,9 @@
             ・<b>シロくん（ホウ博士）🦉</b>：手のひらサイズのメガネフクロウ。未来の超時空研究所から迷い込んできた大天才学者！助手の右肩と左腕が大のお気に入りで、軽すぎて風に飛ばされそうになる可愛いツンデレですホ！
           </div>
 
-          <div class="manual-sec-title">🗣️ 基本のお話し方 ＆ 👤 家族・お友達（ゲスト）とお話し</div>
+          <div class="manual-sec-title">🗣️ 基本のお話し方</div>
           <div>
-            ・<b>基本のお話し</b>：マイクに向かって「おはよう」「今何時？」「今日何日？」「今日の気温は？」と気軽に話しかけてニャ！<br>
-            ・<b>お友達や家族とお話し</b>：「クロちゃん、こちらは妹の〇〇ちゃんだよ」「〇〇（友達）だよ」と紹介すると、相手の名前を覚えて親しくお話しします！上部に『👤 〇〇さん ✕』と表示され、「おやびんだよ」と言うか『✕』を押せばいつでもおやびんに戻ります♪
+            マイクに向かって「おはよう」「いま何時？」「今日何日？」「今日の気温は？」と気軽に話しかけてニャ！いつもおやびん（シロくんの場合は助手）の声をしっかり聴いています♪
           </div>
 
           <div class="manual-sec-title">👓 2つのモードと話しかけキーワード</div>
@@ -639,11 +634,24 @@
     </div>
   </div>
 
-  <!-- スクリプト読み込み（v1.3.0 キャッシュバスター完全一致） -->
-  <script src="char_kuro.js?v=v1.3.0"></script>
-  <script src="char_shiro.js?v=v1.3.0"></script>
-  <script src="version.js?v=v1.3.0"></script>
-  <script src="core_engine.js?v=v1.3.0"></script>
-  <script src="app.js?v=v1.3.0"></script>
+  <!-- スクリプト動的タイムスタンプ自動ローダー（キャッシュ永久無効化・依存順序厳格保証） -->
+  <script>
+    (function() {
+      const timestamp = Date.now();
+      const files = [
+        'char_kuro.js',
+        'char_shiro.js',
+        'version.js',
+        'core_engine.js',
+        'app.js'
+      ];
+      files.forEach(function(file) {
+        const s = document.createElement('script');
+        s.src = file + '?t=' + timestamp;
+        s.async = false;
+        document.body.appendChild(s);
+      });
+    })();
+  </script>
 </body>
 </html>
