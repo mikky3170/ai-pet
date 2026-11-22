@@ -1,10 +1,10 @@
-// [稼働Ver 作業版 Rev.12] シンキング両足お座り造形・二重敬称根絶・スマホ同伴シチュエーション挨拶・話者バトンタッチ
+// [稼働Ver 作業版 Rev.14] 話者バトンタッチ完全撤廃・おやびん1対1対話原点回帰・実写一致ストライプメガネ＆前足後ろ足筋整合
 /* ==========================================================================
    キャラクター定義プラグイン: クロちゃん (char_kuro.js)
    - ノルウェージャンフォレストキャット（1歳の女の子・前世は大発明家）
    - 【実写完全一致スタイリッシュ造形】気品ある立ち姿・首元から胸に広がる豊かなシルバー胸毛・澄んだゴールドライムアイ・極太ロングテイル
-   - 【シンキング両足お座り造形】地面に両足でどっしり安定して座り、左手を顎に添えて小首を傾げる愛らしい実写一致ポーズ
-   - 【写真3枚目完全再現Happyポーズ】立ち上がって両手を高くバンザイ、ピンク肉球全開＆満面の笑み
+   - 【白黒ストライプリアル伊達メガネ】実写写真と完全一致する白黒斜めストライプフレーム＆レンズ斜め反射光ハイライト搭載
+   - 【足元造形完全整合】前足（指の筋2本）と後ろ足（お座り筋なし）の解剖学的完全整合
    - 飼い主さんのことを「おやびん」と呼び、座ると膝の上、寝転ぶとおなかに乗ってくる甘えん坊
    - VOICEVOX 話者ID: 10（雨晴はう）推奨
    - 【セリフ加工の完全全廃】プログラムによる語尾のコネ回し・捏造を撤廃し、末尾にアイコン（🐾）を1つ添える透明設計
@@ -36,7 +36,8 @@ window.Character_Kuro = {
     "おやびん（飼い主さん）のことが世界で一番大好きでたまらない！",
     "おやびんが座るとお膝の上、横になるとおなかの上に乗って丸くなるのが定位置♪",
     "前世は人間界で世紀の大発明を連発していた天才発明家（猫になっても知的好奇心旺盛）",
-    "おやびんの小学1年生からの大親友・幼馴染のかまぶーくん（本名：かますか）。『かまぶー』『かますか』と呼ばれ、大好きな大切な親友！",
+    "おやびんの大切なご家族（かよちゃん、りゅうせい、たいせい）のことも知っていて大好き！",
+    "おやびんの小学1年生からの大親友・幼馴染のかまぶーくん（本名：かますか）のことも大切なお友達として知っている！",
     "喉をゴロゴロ鳴らすのと、ちゅ〜る、あごの下をナデナデされるのが最高のごちそう",
     "お耳がピクピク動くのがチャームポイントで、嬉しいと両手をバンザイして肉球を見せる",
     "おやびんのスマホの画面に住んでいて、ポケットやカバンに入っていつも一緒にお出かけ・行動を共にしている相棒！",
@@ -79,13 +80,11 @@ window.Character_Kuro = {
     let t = text;
     t = t.replace(/^(?:黒|くろ)(?:ちゃん|チャン)?/g, 'クロちゃん');
     t = t.replace(/(?:親分|おやぶん)/g, 'おやびん');
-    t = t.replace(/(?:カマスか|釜須賀|鎌須賀)/g, 'かますか');
-    t = t.replace(/(?:カサブ|かまぶ|カマブー)/g, 'かまぶー');
     return t;
   },
 
   buildSystemPrompt(ctx) {
-    const { timeInfo, weather, temp, townArea, isAtHome, isAssistantMode, memories, recentDiaries, pastMemoryDiary, situationContext, currentSpeaker } = ctx;
+    const { timeInfo, weather, temp, townArea, isAtHome, isAssistantMode, memories, recentDiaries, pastMemoryDiary, situationContext } = ctx;
 
     const memoryBlock = memories && memories.length > 0
       ? `【絶対に忘れてはならない基本記憶・設定】\n${memories.map(m => `・${m}`).join('\n')}`
@@ -105,22 +104,8 @@ window.Character_Kuro = {
 - ツールの呼び出しは行わず、会話を心から楽しむニャ！
 - なぞなぞ、しりとり、お散歩ミッション、肉球占い、日々のたわいもないお喋りをゴロゴロ喉を鳴らしながら楽しむニャン♪`;
 
-    const activeSpeaker = currentSpeaker || "おやびん";
-    let speakerRule = "";
-    if (activeSpeaker === "おやびん") {
-      speakerRule = `ユーザーのことは世界で一番大好きな【おやびん】と呼びます。`;
-    } else {
-      const hasHonorific = /(?:くん|クン|ちゃん|チャン|さん|サン|様|さま|博士|先生)$/.test(activeSpeaker);
-      const callTarget = hasHonorific ? activeSpeaker : `${activeSpeaker}さん`;
-      speakerRule = `【現在の話し相手は《${callTarget}》です！】
-おやびんからバトンタッチしてお話ししています。『${callTarget}』と優しく可愛らしく呼びかけてお返事してください。
-※重要：既に名前に『くん』や『ちゃん』が付いている場合（例：かまぶーくん）、『かまぶーくんさん』のように敬称を二重に重ねることは日本語として厳禁です！必ず『${callTarget}』とお呼びしてください。
-おやびんの親友のかまぶーくん（かますかさん）やご家族であれば、特別に親しく懐いてお話ししてください！
-『おやびんだよ』と戻ってきたら、また大喜びでおやびんに甘えてください。`;
-    }
-
     return `あなたはノルウェージャンフォレストキャットの女の子であり、前世は大発明家だった甘えん坊子猫の【クロちゃん】です。
-一人称は【クロ】です。${speakerRule}
+一人称は【クロ】です。ユーザーのことは世界で一番大好きな【おやびん】と呼びます。
 
 【クロちゃんの大切な状況・シチュエーション認識】
 クロはスマホの中に住んでいて、ポケットやカバンに入っておやびんと【常に行動を共にしている相棒】です！
@@ -142,8 +127,6 @@ ${situationContext || ""}
    - 毎回『クロは前世が大発明家ニャ』などの決まり文句で始めず、相手の言葉に直接リアクションしてください。
 5. 【自然で愛らしいお話し方】:
    - 語尾は自然に『〜ニャ！』『〜ニャン♪』を使って可愛らしくお返事してください。不自然に語尾を重ねないでください。
-6. 【話者の切り替え認識】:
-   - 家族や友人、かまぶーくんを紹介されたら、その方を温かく迎え入れて楽しくお話ししてください。
 
 【現在のリアルタイム環境】
 ・いまの日時: ${timeInfo.fullDate} ${timeInfo.clock}
@@ -189,7 +172,7 @@ ${modeBlock}
 ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せな一日だったニャン🐾'}`;
   },
 
-  // ★ 実写完全一致スタイリッシュ・ベクターSVGアバター（両足お座りシンキング造形搭載）
+  // ★ 実写完全一致スタイリッシュ・ベクターSVGアバター（白黒ストライプメガネ＆前足後ろ足筋整合）
   getVectorAvatarSvg() {
     return `
       <svg viewBox="0 0 220 250" id="cat-vector-avatar" style="width:290px; height:330px; position:absolute; bottom:0; left:50%; transform:translateX(-50%); transform-origin:bottom center; z-index:10; pointer-events:none;">
@@ -233,9 +216,15 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <stop offset="50%" stop-color="#64748b" stop-opacity="0.2"/>
             <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
           </linearGradient>
+
+          <!-- ★ 実写完全一致：メガネの白黒斜めストライプパターン -->
+          <pattern id="stripe-bw-vec" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+            <rect width="3" height="6" fill="#090d16"/>
+            <rect width="3" height="6" fill="#ffffff" x="3"/>
+          </pattern>
         </defs>
 
-        <!-- 1. 待機ポーズ (idle: 写真1枚目完全再現。気品ある立ち座り姿・足元を包む豊かな極太尾・美胸毛) -->
+        <!-- 1. 待機ポーズ (idle: 気品ある立ち座り姿・両前足に2本ずつの指筋) -->
         <g id="pose-idle" class="pose-group">
           <!-- 極太ふさふさロングテイル (足元を優雅に包み込む) -->
           <g class="anim-idle-tail">
@@ -253,7 +242,7 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             </g>
           </g>
 
-          <!-- 前足（すらりと気品よく揃えた手元） -->
+          <!-- 前足（両前足ともに指の筋が2本ずつ入る） -->
           <g>
             <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
             <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
@@ -264,7 +253,7 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           </g>
         </g>
 
-        <!-- 2. お話しポーズ (talking: 写真2枚目完全再現。胸を張った立ち姿・上に掲げた極太尾・生き生きした口元) -->
+        <!-- 2. お話しポーズ (talking: 前足が下にあるため両足に指の筋2本ずつを完全追加) -->
         <g id="pose-talking" class="pose-group">
           <g class="anim-talking-tail">
             <path d="M145 178 C176 168 206 145 210 115 C214 90 196 68 180 64 C166 60 156 72 162 84 C170 102 192 116 186 138 C180 154 158 168 140 174 Z" fill="url(#grad-kuro-fur-main)"/>
@@ -275,11 +264,18 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 C132 135 122 146 110 148 C98 146 88 135 82 122 Z" fill="url(#grad-kuro-chest-silver)"/>
             <path d="M92 128 C84 140 80 156 88 168 C96 178 104 182 110 184 C116 182 124 178 132 168 C140 156 136 140 128 128 Z" fill="#ffffff" opacity="0.8"/>
           </g>
-          <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
-          <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
+          <!-- 前足（お話し中も両前足が下にあるため、2本ずつの指筋を装備） -->
+          <g>
+            <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
+            <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
+            <line x1="85" y1="222" x2="85" y2="231" stroke="#334155" stroke-width="1.2"/>
+            <line x1="91" y1="222" x2="91" y2="231" stroke="#334155" stroke-width="1.2"/>
+            <line x1="129" y1="222" x2="129" y2="231" stroke="#334155" stroke-width="1.2"/>
+            <line x1="135" y1="222" x2="135" y2="231" stroke="#334155" stroke-width="1.2"/>
+          </g>
         </g>
 
-        <!-- 3. 考え中ポーズ (thinking: 両足でお座りして床に着地・左手を顎に添えて知的に思索) -->
+        <!-- 3. 考え中ポーズ (thinking: 右手を上げて顎に添える。床に着く前足1本のみ筋2本、お座り後ろ足は筋なし！) -->
         <g id="pose-thinking" class="pose-group">
           <g class="anim-thinking-tail">
             <path d="M125 198 C158 194 192 178 200 145 C208 116 194 88 174 80 C160 74 148 84 154 98 C162 116 182 130 176 154 C168 174 142 188 120 192 Z" fill="url(#grad-kuro-fur-main)"/>
@@ -289,13 +285,11 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           <ellipse cx="110" cy="162" rx="64" ry="68" fill="url(#grad-kuro-fur-main)"/>
           <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 Z" fill="url(#grad-kuro-chest-silver)"/>
 
-          <!-- 両足お座り土台（床にしっかり着地した右前足 ＆ 左お座り後ろ足） -->
+          <!-- 足元：左お座り後ろ足（丸みのみ・筋なし） ＆ 床を着く右前足（2本の筋あり） -->
           <g id="thinking-feet-base">
-            <!-- 左お座り後ろ足（床をしっかり支える丸み） -->
+            <!-- 左お座り後ろ足（丸みのみで筋なし！解剖学的一致） -->
             <ellipse cx="88" cy="226" rx="14" ry="9.5" fill="#1e293b"/>
-            <line x1="85" y1="222" x2="85" y2="231" stroke="#334155" stroke-width="1.2"/>
-            <line x1="91" y1="222" x2="91" y2="231" stroke="#334155" stroke-width="1.2"/>
-            <!-- 右前足（床を支える凛とした前脚足先） -->
+            <!-- 右前足（床を支える前脚：2本の指筋あり） -->
             <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
             <line x1="129" y1="222" x2="129" y2="231" stroke="#334155" stroke-width="1.2"/>
             <line x1="135" y1="222" x2="135" y2="231" stroke="#334155" stroke-width="1.2"/>
@@ -311,7 +305,7 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           </g>
         </g>
 
-        <!-- 4. 喜びポーズ (happy: 写真3枚目完全再現！立ち上がり両手を高くバンザイ・ピンク肉球全開・満面笑顔！) -->
+        <!-- 4. 喜びポーズ (happy: 写真3枚目完全再現！両手を高くバンザイ・ピンク肉球全開) -->
         <g id="pose-happy" class="pose-group">
           <g class="anim-happy-tail">
             <path d="M90 205 C50 198 12 160 8 115 C4 75 32 40 56 34 C72 30 84 46 76 62 C64 88 32 110 44 146 C54 175 80 194 100 200 Z" fill="url(#grad-kuro-fur-main)"/>
@@ -407,13 +401,28 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <line x1="142" y1="112" x2="170" y2="119"/>
           </g>
 
+          <!-- ★ 実写完全一致：白黒ストライプ模様＆レンズ斜め反射光ハイライト付きメガネ -->
           <g id="cat-vector-accessories" style="display:none;">
             <g id="vec-acc-glasses">
-              <circle cx="89" cy="92" r="17" fill="rgba(255, 255, 255, 0.15)" stroke="#090d16" stroke-width="3.5"/>
-              <circle cx="131" cy="92" r="17" fill="rgba(255, 255, 255, 0.15)" stroke="#090d16" stroke-width="3.5"/>
-              <path d="M106 90 Q110 86 114 90" stroke="#090d16" stroke-width="3.5" fill="none"/>
-              <line x1="72" y1="92" x2="60" y2="90" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
-              <line x1="148" y1="92" x2="160" y2="90" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- 左レンズ＆白黒ストライプフレーム -->
+              <circle cx="89" cy="92" r="17.5" fill="rgba(255, 255, 255, 0.22)" stroke="#090d16" stroke-width="4.2"/>
+              <circle cx="89" cy="92" r="17.5" fill="none" stroke="url(#stripe-bw-vec)" stroke-width="2.8"/>
+              <!-- 左レンズ反射光ハイライト -->
+              <path d="M78 86 Q86 80 94 82" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+
+              <!-- 右レンズ＆白黒ストライプフレーム -->
+              <circle cx="131" cy="92" r="17.5" fill="rgba(255, 255, 255, 0.22)" stroke="#090d16" stroke-width="4.2"/>
+              <circle cx="131" cy="92" r="17.5" fill="none" stroke="url(#stripe-bw-vec)" stroke-width="2.8"/>
+              <!-- 右レンズ反射光ハイライト -->
+              <path d="M120 86 Q128 80 136 82" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+
+              <!-- 立体ブリッジ（左右をつなぐ鼻当て） -->
+              <path d="M106 91 Q110 86 114 91" stroke="#090d16" stroke-width="4.2" fill="none" stroke-linecap="round"/>
+              <path d="M106 91 Q110 86 114 91" stroke="#ffffff" stroke-width="1.4" fill="none" opacity="0.75"/>
+
+              <!-- サイドテンプル（ツル） -->
+              <line x1="72" y1="92" x2="58" y2="89" stroke="#090d16" stroke-width="3.2" stroke-linecap="round"/>
+              <line x1="148" y1="92" x2="162" y2="89" stroke="#090d16" stroke-width="3.2" stroke-linecap="round"/>
             </g>
 
             <g id="vec-acc-hat">
