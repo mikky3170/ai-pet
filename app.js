@@ -1,11 +1,10 @@
-
-// [稼働Ver 作業版 Rev.13] 直近写真継続対話エンジン・話者ピル3大集約・二重敬称根絶・タイムアウト3段階制御（8s➔16s➔30s）完全維持
+// [稼働Ver 作業版 Rev.17] 話者バトンタッチ・ゲスト判定完全撤廃・おやびん1対1対話原点回帰・UIと生命感100%維持
 /* ==========================================================================
    AIペット アプリケーションUI ＆ 思考統括司令塔 (app.js)
    - 【責務分離】core_engine.js の基盤機能（音声・GPS・ストレージ・TextFormatter）を基にUIと思考を統括
    - MODULE 4: キャラクター描画 ＆ まぶた・装飾制御（CatAvatarRenderer：スタイリッシュ造形＆両手バンザイ肉球Happy完全同期）
    - MODULE 5: Gemini AI思考エンジン（AIThoughtEngine：直近写真の自動マルチモーダル再添付・表示読みJSON完全分離・3段階タイムアウト 8s➔16s➔30s）
-   - MODULE 6: 中央司令塔（AppCore：話者ピル3大集約「家族/友人/ゲスト」・確実クリア・タイマー・日記帳・設定モーダル・ライフサイクル）
+   - MODULE 6: 中央司令塔（AppCore：おやびんとの絆重視・タイマー・日記帳・設定モーダル・ライフサイクル）
    - ブート処理: bootAIApp（三重起動安全ガード）
    ========================================================================== */
 
@@ -479,7 +478,7 @@ class AIThoughtEngine {
     const context = {
       timeInfo, weather, temp, townArea, isAtHome, isAssistantMode: isAssistant,
       memories, recentDiaries, pastMemoryDiary, talkLength: talkLen, effectiveTalkLength: effectiveLen,
-      situationContext, currentSpeaker: AppCore.state.currentGuestSpeaker || (getCurChar().id === 'shiro' ? '助手' : 'おやびん')
+      situationContext
     };
 
     const cur = getCurChar();
@@ -779,9 +778,7 @@ const AppCore = {
     isCalibratingEyelid: false,
     studioDateKeys: [], studioCurrentDateIdx: 0, isDiaryReading: false, isFinalizingDiary: false,
     idleSoliloquyTimer: null, lastActivityTime: Date.now(), lastCheckedLifeLogKey: null,
-    lastUserTalkTime: Date.now(),
-    currentGuestSpeaker: null, // 案A：ゲスト話者具体名（nullの場合はおやびん/助手）
-    currentGuestType: null     // 案A：3大分類 'family' | 'friend' | 'guest'
+    lastUserTalkTime: Date.now()
   },
 
   audio: new AudioSpeechEngine(),
@@ -810,30 +807,6 @@ const AppCore = {
     } else if (state === 'sleeping') {
       st.classList.add('status-sleeping');
       st.textContent = customText || "💤 すやすやお休み中…";
-    }
-  },
-
-  // ★ 案A：3大固定ラベル（家族 / 友人 / ゲスト）によるスマートピルバッジ更新
-  updateGuestSpeakerBadge(type = null, specificName = null) {
-    this.state.currentGuestType = type;
-    this.state.currentGuestSpeaker = specificName;
-
-    const pill = document.getElementById('guest-pill-badge');
-    const nameSpan = document.getElementById('guest-pill-name');
-    if (!pill || !nameSpan) return;
-
-    if (type) {
-      const labelMap = {
-        family: "👤 家族",
-        friend: "👤 友人",
-        guest:  "👤 ゲスト"
-      };
-      nameSpan.textContent = labelMap[type] || "👤 ゲスト";
-      pill.style.display = 'inline-flex';
-    } else {
-      pill.style.display = 'none';
-      this.state.currentGuestSpeaker = null;
-      this.state.currentGuestType = null;
     }
   },
 
@@ -1527,85 +1500,10 @@ const AppCore = {
     return t;
   },
 
-  // ★ 案A：話し相手（家族・友人・ゲスト）のバトンタッチ検知＆敬称正規化
-  _detectSpeakerChange(text) {
-    if (!text) return false;
-    const cur = getCurChar();
-
-    // 1. おやびん / 助手への復帰発言
-    if (/(?:おやびんだよ|おやびんに戻る|わたしがおやびん|俺がおやびん|ボクがおやびん|助手だよ|助手にもどる|じょしゅだよ|ただいま|戻ったよ)/i.test(text)) {
-      if (this.state.currentGuestSpeaker || this.state.currentGuestType) {
-        this.updateGuestSpeakerBadge(null);
-        const backMsg = cur.id === 'shiro'
-          ? "お帰りホ、助手！定位置の肩の上に戻るホ！🦉"
-          : "おやびんおかえりニャン！待ってたニャ〜♡🐾";
-        this.audio.speak(backMsg, null, () => this.renderBubble('model', backMsg), () => {
-          this.state.isProcessingInput = false;
-        });
-        return true;
-      }
-    }
-
-    // 2. 幼馴染かまぶーくんのバトンタッチ検知（友人扱い）
-    if (/(?:かまぶー|かますか)/i.test(text) && /(?:だよ|に代わる|にかわる|を紹介|を紹介する|とお話し|とおはなし)/.test(text)) {
-      this.updateGuestSpeakerBadge("friend", "かまぶーくん");
-      const greetMsg = cur.id === 'shiro'
-        ? "おお、かまぶーくんホな！助手の幼馴染・大親友を大歓迎するホ！よろしく頼むホ！🦉"
-        : "わーい！おやびんの大親友のかまぶーくんだニャン！会えて嬉しいニャ！よろしくニャ🐾";
-      this.audio.speak(greetMsg, null, () => this.renderBubble('model', greetMsg), () => {
-        this.state.isProcessingInput = false;
-      });
-      return true;
-    }
-
-    // 3. 家族へのバトンタッチ検知
-    if (/(?:家族|妹|弟|姉|兄|妻|夫|母|父|娘|息子|お母さん|お父さん)/.test(text) && /(?:だよ|に代わる|にかわる|を紹介|とお話し)/.test(text)) {
-      const familyMatch = text.match(/(?:妹|弟|姉|兄|妻|夫|母|父|娘|息子)?の?\s*([A-Za-zぁ-んァ-ヶ一-龠]{2,8}?)\s*(?:さん|ちゃん|くん)?/);
-      const name = (familyMatch && familyMatch[1]) ? familyMatch[1].replace(/おやびん|助手|クロ|シロ/g, '').trim() : "ご家族";
-      this.updateGuestSpeakerBadge("family", name);
-      const greetMsg = cur.id === 'shiro'
-        ? `ホウ！助手の素敵なご家族ホな！助手の相棒・ホウ博士だホ！歓迎するホ！🦉`
-        : `おやびんのご家族ニャ！はじめましてだニャン🐾 よろしくニャ！`;
-      this.audio.speak(greetMsg, null, () => this.renderBubble('model', greetMsg), () => {
-        this.state.isProcessingInput = false;
-      });
-      return true;
-    }
-
-    // 4. 一般友人・ゲストへのバトンタッチ検知
-    const match = text.match(/(?:こちらは|次は|友達の|友人の)?\s*([A-Za-zぁ-んァ-ヶ一-龠]{2,8}?)\s*(?:さん|ちゃん|くん)?\s*(?:に代わる|にかわる|だよ|を紹介|とお話し)/);
-    if (match && match[1]) {
-      const rawName = match[1].replace(/おやびん|助手|クロ|シロ|ホウ博士/g, '').trim();
-      if (rawName.length >= 2) {
-        const isFriend = text.includes("友達") || text.includes("友人");
-        const type = isFriend ? "friend" : "guest";
-        this.updateGuestSpeakerBadge(type, rawName);
-        const greetMsg = cur.id === 'shiro'
-          ? `ホウ！${rawName}ホな！助手の相棒・ホウ博士だホ！歓迎するホ！🦉`
-          : `はじめまして、${rawName}ニャ！おやびんの相棒のクロちゃんだニャン🐾 よろしくニャ！`;
-        this.audio.speak(greetMsg, null, () => this.renderBubble('model', greetMsg), () => {
-          this.state.isProcessingInput = false;
-        });
-        return true;
-      }
-    }
-    return false;
-  },
-
   async handleUserInput(text) {
     this.resetActivityTimer();
-    const nowMs = Date.now();
-    // 30分以上空いての会話再開時は、安全のためおやびん状態へリセット
-    if (this.state.currentGuestType && (nowMs - this.state.lastUserTalkTime) > 30 * 60 * 1000) {
-      this.updateGuestSpeakerBadge(null);
-    }
-    this.state.lastUserTalkTime = nowMs;
+    this.state.lastUserTalkTime = Date.now();
     const cur = getCurChar();
-
-    // 話者バトンタッチ（案A）のチェック
-    if (this._detectSpeakerChange(text)) {
-      return;
-    }
 
     if (/(?:タイマー.*(?:止めて|やめて|消して|ストップ)|アラーム.*(?:止めて|消して|ストップ))/.test(text)) {
       this.cancelKitchenTimer(true);
@@ -2524,25 +2422,6 @@ const AppCore = {
   },
 
   _bindUI() {
-    // 案A：ゲストピルバッジの解除イベント
-    document.getElementById('guest-pill-close')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.updateGuestSpeakerBadge(null);
-      const cur = getCurChar();
-      const backMsg = cur.id === 'shiro'
-        ? "助手、定位置に戻ったホ！🦉"
-        : "おやびん、ただいまニャン♡🐾";
-      this.audio.speak(backMsg, null, () => this.renderBubble('model', backMsg));
-    });
-    document.getElementById('guest-pill-badge')?.addEventListener('click', () => {
-      this.updateGuestSpeakerBadge(null);
-      const cur = getCurChar();
-      const backMsg = cur.id === 'shiro'
-        ? "助手、定位置に戻ったホ！🦉"
-        : "おやびん、ただいまニャン♡🐾";
-      this.audio.speak(backMsg, null, () => this.renderBubble('model', backMsg));
-    });
-
     document.getElementById('force-refresh-btn')?.addEventListener('click', () => this.forceRefreshApp());
     document.getElementById('diag-force-reload-btn')?.addEventListener('click', () => this.forceRefreshApp());
     document.getElementById('btn-download-backup')?.addEventListener('click', () => StorageManager.downloadDataPackage());
