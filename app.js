@@ -1,10 +1,10 @@
-// [稼働Ver 作業版 Rev.17] 話者バトンタッチ・ゲスト判定完全撤廃・おやびん1対1対話原点回帰・UIと生命感100%維持
+// [稼働Ver 作業版 Rev.18] 単一状態機械（State Machine）一元化・応答オブジェクト正規化・ステータス完全同期・UI生命感100%維持
 /* ==========================================================================
    AIペット アプリケーションUI ＆ 思考統括司令塔 (app.js)
    - 【責務分離】core_engine.js の基盤機能（音声・GPS・ストレージ・TextFormatter）を基にUIと思考を統括
    - MODULE 4: キャラクター描画 ＆ まぶた・装飾制御（CatAvatarRenderer：スタイリッシュ造形＆両手バンザイ肉球Happy完全同期）
-   - MODULE 5: Gemini AI思考エンジン（AIThoughtEngine：直近写真の自動マルチモーダル再添付・表示読みJSON完全分離・3段階タイムアウト 8s➔16s➔30s）
-   - MODULE 6: 中央司令塔（AppCore：おやびんとの絆重視・タイマー・日記帳・設定モーダル・ライフサイクル）
+   - MODULE 5: Gemini AI思考エンジン（AIThoughtEngine：直近写真の自動マルチモーダル再添付・3段階タイムアウト 8s➔16s➔30s）
+   - MODULE 6: 中央司令塔（AppCore：単一状態機械 State Machine 一元管理・応答オブジェクト正規化・おやびんとの絆重視・タイマー・日記帳・設定モーダル・ライフサイクル）
    - ブート処理: bootAIApp（三重起動安全ガード）
    ========================================================================== */
 
@@ -409,7 +409,6 @@ class AIThoughtEngine {
       }
     }
 
-    // ★ 写真データの添付判定（今回撮影した写真、または直近30分以内の写真を見直しながらの会話）
     let effectivePhoto = photoBase64;
     if (!effectivePhoto) {
       const lastCachedPhoto = StorageManager.getLastSharedPhoto();
@@ -461,7 +460,6 @@ class AIThoughtEngine {
     const recentDiaries = StorageManager.getRecentDiariesSummary(3);
     const pastMemoryDiary = StorageManager.findRelevantPastDiary(promptText);
 
-    // ★ 状況シチュエーション文脈の生成
     const nowMs = Date.now();
     const lastTalkMs = AppCore.state.lastUserTalkTime || nowMs;
     const minutesSinceLastTalk = Math.floor((nowMs - lastTalkMs) / 60000);
@@ -502,7 +500,6 @@ class AIThoughtEngine {
     if (effectiveLen === 'short') targetMaxTokens = 120;
     else if (effectiveLen === 'long') targetMaxTokens = 450;
 
-    // ★ 本来の「8秒 ➔ 16秒 ➔ 30秒」3段階フォールバック設計
     const timeoutStages = [8000, 16000, 30000];
 
     for (let stageIdx = 0; stageIdx < timeoutStages.length; stageIdx++) {
@@ -570,7 +567,7 @@ class AIThoughtEngine {
         if (res.ok) {
           const data = await res.json();
           const parts = data.candidates?.[0]?.content?.parts || [];
-          let replyText = "";
+          let replyRaw = "";
           let cards = [];
 
           const functionCallPart = parts.find(p => p.functionCall);
@@ -582,25 +579,34 @@ class AIThoughtEngine {
               const spot = args.spotName || "近くの公園・評判店";
               const area = args.area || townArea || "東村山市";
               cards = this._createSmartMapCards(spot, area);
-              replyText = cur.id === 'shiro'
+              replyRaw = cur.id === 'shiro'
                 ? `助手よ、${spot}の場所を計算して割り出したホ！この地図で確認するが良いホ！🦉`
                 : `おやびん、${spot}の場所を地図で見つけてきたニャ！ここから確認してニャン🐾`;
             } else if (callInfo.name === "searchLatestNews") {
               const topic = args.topic || "最新ニュース";
               cards = this._createSmartNewsCards(topic);
-              replyText = cur.id === 'shiro'
+              replyRaw = cur.id === 'shiro'
                 ? `助手よ、${topic}の最新情報を整理したホ！目を通すが良いホ！📰🦉`
                 : `おやびん、${topic}の最新ニュースをチェックしたニャ！見てみてニャン📰🐾`;
             }
           }
 
           const textPart = parts.find(p => p.text);
-          if (textPart?.text && !replyText) replyText = textPart.text;
+          if (textPart?.text && !replyRaw) replyRaw = textPart.text;
 
-          if (replyText) {
+          if (replyRaw) {
             Logger.log(`[AI] ✅ 応答受信成功 (${ms}ms) [${cleanModel}, stage:${stageIdx + 1}]`, "success");
             this.activeAbortController = null;
-            return { success: true, text: replyText, groundingCards: cards };
+
+            // 入口で正規化オブジェクトを確定
+            const norm = TextFormatter.normalizeResponse(replyRaw);
+            return {
+              success: true,
+              normalized: norm,
+              displayText: norm.display,
+              speechText: norm.speech,
+              groundingCards: cards
+            };
           }
         }
       } catch (err) {
@@ -621,7 +627,8 @@ class AIThoughtEngine {
       ? "うむむ…！助手の話を深く思考していたら、計算回路がオーバーヒートしたホ…！もう一度言ってくれホ！🦉"
       : "うにゃあ…！おやびんのお話しをじっくり考えてたら、頭の中がこんがらがっちゃったニャ〜！もう一回言ってニャン🐾";
 
-    return { success: false, isTimeout: true, text: timeoutMsg };
+    const timeoutNorm = TextFormatter.normalizeResponse(timeoutMsg);
+    return { success: false, isTimeout: true, normalized: timeoutNorm, displayText: timeoutNorm.display, speechText: timeoutNorm.speech };
   }
 
   _createSmartMapCards(spotName, area) {
@@ -767,9 +774,11 @@ window.AIThoughtEngine = AIThoughtEngine;
 
 /* ==========================================================================
    MODULE 6: 中央司令塔（AppCore）
+   - 単一状態機械（State Machine: PAUSED / HEARING / THINKING / SPEAKING）一元管理
    ========================================================================== */
 const AppCore = {
   state: {
+    appState: 'HEARING', // 単一状態: 'PAUSED' | 'HEARING' | 'THINKING' | 'SPEAKING'
     isRunning: true, isThinking: false, isProcessingInput: false, isDiaryProcessing: false,
     isAssistantMode: false, editingMemoryIdx: null, activeAdjustTab: 'idle', snackCount: 0,
     timerId: null, timerSeconds: 0, timerLabel: "", isTimerPaused: false, isTimerCompleted: false,
@@ -787,27 +796,67 @@ const AppCore = {
   memories: [],
   todayLogs: [],
 
-  setStatus(state, customText = null) {
-    const st = document.getElementById('status-text');
-    if (!st) return;
-    st.classList.remove('status-hearing', 'status-speaking', 'status-thinking', 'status-sleeping');
+  // ★ 単一状態機械（State Machine）による一元的ステータス・UI完全同期
+  transitionTo(nextState, customText = null) {
+    if (!this.state.isRunning && nextState !== 'PAUSED') {
+      nextState = 'PAUSED';
+    }
 
+    this.state.appState = nextState;
     const cur = getCurChar();
     const suffix = cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪';
+    const st = document.getElementById('status-text');
 
-    if (state === 'hearing') {
-      st.classList.add('status-hearing');
-      st.textContent = customText || `👂 聴いてる${suffix}`;
-    } else if (state === 'speaking') {
-      st.classList.add('status-speaking');
-      st.textContent = customText || "🗣️ お話し中♪";
-    } else if (state === 'thinking') {
-      st.classList.add('status-thinking');
-      st.textContent = customText || (cur.id === 'shiro' ? "💭 計算中ホ…" : "💭 考え中ニャ…");
-    } else if (state === 'sleeping') {
-      st.classList.add('status-sleeping');
-      st.textContent = customText || "💤 すやすやお休み中…";
+    if (st) {
+      st.classList.remove('status-hearing', 'status-speaking', 'status-thinking', 'status-sleeping');
     }
+
+    switch (nextState) {
+      case 'PAUSED':
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+        if (st) {
+          st.classList.add('status-sleeping');
+          st.textContent = customText || "💤 すやすやお休み中…";
+        }
+        break;
+
+      case 'HEARING':
+        this.state.isThinking = false;
+        this.state.isProcessingInput = false;
+        if (st) {
+          st.classList.add('status-hearing');
+          st.textContent = customText || `👂 聴いてる${suffix}`;
+        }
+        break;
+
+      case 'THINKING':
+        this.state.isThinking = true;
+        if (st) {
+          st.classList.add('status-thinking');
+          st.textContent = customText || (cur.id === 'shiro' ? "💭 計算中ホ…" : "💭 考え中ニャ…");
+        }
+        break;
+
+      case 'SPEAKING':
+        this.state.isThinking = false;
+        if (st) {
+          st.classList.add('status-speaking');
+          st.textContent = customText || "🗣️ お話し中♪";
+        }
+        break;
+    }
+  },
+
+  // 互換性維持ラッパー
+  setStatus(state, customText = null) {
+    const map = {
+      'hearing': 'HEARING',
+      'speaking': 'SPEAKING',
+      'thinking': 'THINKING',
+      'sleeping': 'PAUSED'
+    };
+    this.transitionTo(map[state] || 'HEARING', customText);
   },
 
   getSpeakerId() {
@@ -870,7 +919,7 @@ const AppCore = {
       ? "フン、ボクの出番ホな！よろしく頼むホ、助手！🦉"
       : "おやびん、わたしはクロだニャン♪ 今日もよろしくニャ！🐾";
 
-    this.audio.speak(welcomeMsg, null, () => this.renderBubble('model', welcomeMsg));
+    this.audio.speak(welcomeMsg, null, () => this.renderBubble('model', welcomeMsg), null, null, welcomeMsg);
     const switchToast = charId === 'shiro' ? "パートナーを【ホウ博士】に切り替えたホ！" : "パートナーを【クロちゃん】に切り替えたニャン♪";
     Toast.show(switchToast, "success", 3000);
   },
@@ -995,7 +1044,7 @@ const AppCore = {
 
     setTimeout(() => {
       if (this.state.isRunning && !this.audio.isSpeechProducing) {
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
         this.audio.startListening();
       }
     }, 500);
@@ -1194,16 +1243,25 @@ const AppCore = {
     this._scrollToLatest(false);
   },
 
+  // ★ 音声イベント通知を一元バインド
   _setupAudioCallbacks() {
+    this.audio.onSpeechStart = () => {
+      this.transitionTo('SPEAKING');
+    };
+
+    this.audio.onSpeechEnd = () => {
+      if (this.state.isRunning && !this.audio.isReadingAloud && !this.state.isDiaryReading) {
+        this.transitionTo('HEARING');
+      }
+    };
+
     this.audio.onBargeIn = () => {
       this.resetActivityTimer();
       if (this.avatar) this.avatar.setEmotion('idle');
-      this.state.isThinking = false;
-      this.state.isProcessingInput = false;
       this.state.isDiaryReading = false;
       this._updateDiaryReadBtnUI(false);
       this.audio.playEffect('aizuchi');
-      if (this.state.isRunning) this.setStatus('hearing');
+      if (this.state.isRunning) this.transitionTo('HEARING');
     };
 
     this.audio.onSpeechFinal = (finalText) => {
@@ -1214,9 +1272,9 @@ const AppCore = {
       this.handleUserInput(finalText);
     };
 
-    this.audio.onListeningStatus = () => {
-      if (this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing && !this.state.isThinking && !this.audio.isActionButtonLocked) {
-        this.setStatus('hearing');
+    this.audio.onListeningStatus = (isListening) => {
+      if (this.state.isRunning && isListening && !this.audio.isSpeaking && !this.audio.isSpeechProducing && !this.state.isThinking && !this.audio.isActionButtonLocked) {
+        this.transitionTo('HEARING');
       }
     };
   },
@@ -1451,7 +1509,7 @@ const AppCore = {
         }, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
           if (this.state.isRunning && !this.audio.isSpeaking && !this.audio.isSpeechProducing) this.audio.startListening();
-        });
+        }, null, alertMsg);
       }
     }, 1000);
   },
@@ -1510,7 +1568,7 @@ const AppCore = {
       const rep = cur.id === 'shiro' ? "タイマーを停止したホ！🔔🦉" : "タイマーを止めたニャン🔔🐾";
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, rep);
       return;
     }
 
@@ -1537,7 +1595,7 @@ const AppCore = {
 
       this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, wakeMsg);
       return;
     }
 
@@ -1553,7 +1611,7 @@ const AppCore = {
 
       this.audio.speak(guideText, null, () => this.renderBubble('model', guideText), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, guideText);
       return;
     }
 
@@ -1561,7 +1619,7 @@ const AppCore = {
     if (isDiary) {
       this.audio.playImmediateFiller('think');
       this.state.isDiaryProcessing = true;
-      this.state.isThinking = true;
+      this.transitionTo('THINKING');
       if (this.avatar) this.avatar.setEmotion('thinking');
       const timeInfo = TimeProvider.getCurrentInfo();
       const currentLogs = StorageManager.getDailyLogs(timeInfo.lifeLogKey);
@@ -1577,13 +1635,12 @@ const AppCore = {
           this.renderDiaryCard(StorageManager.getTodayDiary());
         }, () => {
           if (this.avatar) this.avatar.setEmotion('idle');
-          this.state.isThinking = false;
           this.state.isProcessingInput = false;
-        });
+        }, null, rep);
       } else {
         if (this.avatar) this.avatar.setEmotion('idle');
-        this.state.isThinking = false;
         this.state.isProcessingInput = false;
+        this.transitionTo('HEARING');
       }
       return;
     }
@@ -1613,7 +1670,7 @@ const AppCore = {
 
         this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
           this.state.isProcessingInput = false;
-        });
+        }, null, rep);
         return;
       }
     }
@@ -1629,7 +1686,7 @@ const AppCore = {
 
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, rep);
       return;
     }
 
@@ -1637,7 +1694,7 @@ const AppCore = {
       const info = TimeProvider.getCurrentInfo();
       this.audio.speak(info.spokenClock, null, () => this.renderBubble('model', info.clockDisplay), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, info.clockDisplay);
       return;
     }
 
@@ -1645,7 +1702,7 @@ const AppCore = {
       const info = TimeProvider.getCurrentInfo();
       this.audio.speak(info.spokenDate, null, () => this.renderBubble('model', info.dateDisplay), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, info.dateDisplay);
       return;
     }
 
@@ -1657,28 +1714,24 @@ const AppCore = {
 
       this.audio.speak(rep, null, () => this.renderBubble('model', rep), () => {
         this.state.isProcessingInput = false;
-      });
+      }, null, rep);
       return;
     }
 
     this.executeThought(text);
   },
 
+  // ★ 確定オブジェクトを受け取り、表示・発音・保存を完全に同期させる思考実行エンジン
   async executeThought(promptText, photoBase64 = null, isPhotoAlreadyLogged = false) {
-    this.state.isThinking = true;
+    this.transitionTo('THINKING');
     if (this.avatar && this.state.isRunning) this.avatar.setEmotion('thinking');
     const cur = getCurChar();
     const isShiro = (cur.id === 'shiro');
-
-    const statusText = photoBase64
-      ? (cur.photoThinkingStatus || (isShiro ? "📷 観察中ホ…" : "📷 写真見てるニャ…"))
-      : (isShiro ? "💭 計算中ホ…" : "💭 考え中ニャ…");
 
     const bubbleText = photoBase64
       ? (cur.photoThinkingBubble || (isShiro ? "ホウ博士が観察・分析中ホ…📷✨" : "クロがお写真を見てるニャ…📷✨"))
       : (isShiro ? `${cur.title || cur.name}が計算中ホ…💭` : `${cur.name}が考えてるニャ…💭`);
 
-    this.setStatus('thinking', statusText);
     const bubble = this.renderBubble('model', bubbleText);
     
     try {
@@ -1687,34 +1740,33 @@ const AppCore = {
 
       if (res.aborted) {
         if (bubble) bubble.closest('.chat-row')?.remove();
+        this.transitionTo('HEARING');
         return;
       }
 
-      if (res.isTimeout && res.text) {
-        if (bubble) bubble.textContent = TextFormatter.formatDisplayText(res.text);
-        this.audio.speak(res.text, null, () => {
+      if (res.isTimeout && res.displayText) {
+        if (bubble) bubble.textContent = res.displayText;
+        this.audio.speak(res.speechText, null, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
           this._scrollToLatest(true);
         }, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-          this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          this.setStatus('hearing');
-        });
+          this.transitionTo('HEARING');
+        }, null, res.displayText);
         return;
       }
 
-      if (res.success && res.text) {
+      if (res.success && res.displayText) {
         if (!isPhotoAlreadyLogged) {
           StorageManager.appendChatLog('user', promptText);
         }
-        StorageManager.appendChatLog('model', res.text);
+        // 確定した表示テキストを保存
+        StorageManager.appendChatLog('model', res.displayText);
 
-        const displayBubbleText = TextFormatter.formatDisplayText(res.text);
-
-        this.audio.speak(res.text, null, () => {
+        this.audio.speak(res.speechText, null, () => {
           if (bubble) {
-            bubble.textContent = displayBubbleText;
+            bubble.textContent = res.displayText;
 
             if (this.state.isAssistantMode && res.groundingCards && res.groundingCards.length > 0) {
               const parentRow = bubble.closest('.chat-row');
@@ -1736,10 +1788,9 @@ const AppCore = {
           this._scrollToLatest(true);
         }, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-          this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          this.setStatus('hearing');
-        });
+          this.transitionTo('HEARING');
+        }, null, res.displayText);
       } else {
         const fb = cur.id === 'shiro'
           ? "助手よ、もう一度明確に話してくれホ！🦉"
@@ -1748,10 +1799,9 @@ const AppCore = {
         if (bubble) bubble.textContent = fb;
         this.audio.speak(fb, null, () => {}, () => {
           if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-          this.state.isThinking = false;
           this.state.isProcessingInput = false;
-          this.setStatus('hearing');
-        });
+          this.transitionTo('HEARING');
+        }, null, fb);
       }
     } catch (err) {
       const errReply = cur.id === 'shiro'
@@ -1761,19 +1811,17 @@ const AppCore = {
       if (bubble) bubble.textContent = errReply;
       this.audio.speak(errReply, null, () => {}, () => {
         if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-        this.state.isThinking = false;
         this.state.isProcessingInput = false;
-        this.setStatus('hearing');
-      });
+        this.transitionTo('HEARING');
+      }, null, errReply);
     } finally {
       setTimeout(() => {
         if (this.state.isProcessingInput && !this.audio.isSpeaking && !this.audio.isReadingAloud && !this.audio.isSpeechProducing) {
           this.state.isProcessingInput = false;
-          this.state.isThinking = false;
-          this.setStatus('hearing');
+          this.transitionTo('HEARING');
           if (this.state.isRunning) this.audio.startListening();
         }
-      }, 10000);
+      }, 8000);
     }
   },
 
@@ -1781,13 +1829,13 @@ const AppCore = {
     this.resetActivityTimer();
     this.audio.stopListening();
     this.audio.isActionButtonLocked = true;
-    this.setStatus('speaking', statusDisplay);
+    this.transitionTo('SPEAKING', statusDisplay);
 
     if ((localStorage.getItem('kuro_button_feedback') || 'voice') === 'mute') {
       this.audio.playEffect('aizuchi');
       setTimeout(() => {
         this.audio.isActionButtonLocked = false;
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
         if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
       }, 400);
       return;
@@ -1797,9 +1845,9 @@ const AppCore = {
       if (this.avatar && this.state.isRunning) this.avatar.setEmotion('talking');
     }, () => {
       if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-      this.setStatus('hearing');
+      this.transitionTo('HEARING');
       this.audio.isActionButtonLocked = false;
-    }, cooldownMs);
+    }, cooldownMs, shortPhrase);
   },
 
   _updateModeUI(speak = true) {
@@ -1845,7 +1893,7 @@ const AppCore = {
       this._updateDiaryReadBtnUI(false);
       modal?.classList.remove('is-open');
       if (this.state.isRunning && !this.audio.isSpeechProducing) {
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
         this.audio.startListening();
       }
     });
@@ -1868,7 +1916,7 @@ const AppCore = {
       Toast.show(getCurChar().id === 'shiro' ? "絵日記を保存したホ！📖✨" : "絵日記を保存したニャン♪📖✨", "success");
       modal?.classList.remove('is-open');
       if (this.state.isRunning && !this.audio.isSpeechProducing) {
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
         this.audio.startListening();
       }
     });
@@ -2553,7 +2601,7 @@ const AppCore = {
       if (this.state.snackCount >= 3) { this.state.snackCount = 0; this.audio.playEffect('purr'); }
       this.audio.speak(msg, null, () => this.renderBubble('model', msg), () => {
         if (this.avatar && this.state.isRunning) this.avatar.setEmotion('idle');
-      });
+      }, null, msg);
     });
 
     document.getElementById('transform-btn')?.addEventListener('click', (e) => {
@@ -2644,7 +2692,7 @@ const AppCore = {
       const waitAck = cur.id === 'shiro' ? "指示を待っているホ！" : "おやびんの声を待ってるニャン♪🐾";
       Toast.show(waitAck, "info");
       const ackVoice = cur.id === 'shiro' ? "うむ！🦉" : "はーい！🐾";
-      this.setStatus('hearing');
+      this.transitionTo('HEARING');
       this.triggerActionVoice(ackVoice, `👂 聴いてる${cur.id === 'shiro' ? 'ホ♪' : 'ニャ♪'}`);
     });
 
@@ -2671,7 +2719,7 @@ const AppCore = {
         this.state.isDiaryReading = false;
 
         petContainer?.classList.add('is-paused-mode');
-        this.setStatus('sleeping');
+        this.transitionTo('PAUSED');
 
         if (this.avatar) {
           this.avatar.setEmotion('idle');
@@ -2688,7 +2736,7 @@ const AppCore = {
           this.avatar.setEmotion('idle');
           this.avatar.applyEyelidTransforms();
         }
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
 
         const wakeMsg = cur.id === 'shiro'
           ? "ふぁ〜あ…！助手よ、目覚めたホ！どんな用件ホ？🦉"
@@ -2696,7 +2744,7 @@ const AppCore = {
 
         this.audio.speak(wakeMsg, null, () => this.renderBubble('model', wakeMsg), () => {
           if (this.state.isRunning && !this.audio.isSpeechProducing) this.audio.startListening();
-        });
+        }, null, wakeMsg);
       }
     });
 
@@ -2742,7 +2790,7 @@ const AppCore = {
         ? `助手よ、ボクは${cur.title || cur.name}だホ！🦉`
         : `おやびん、わたしは${cur.name}だニャン🐾`;
 
-      this.audio.speak(testLine, spk);
+      this.audio.speak(testLine, spk, null, null, null, testLine);
     });
     document.getElementById('test-timer-sound-btn')?.addEventListener('click', () => {
       this.audio.playEffect(this.getTimerSound());
@@ -2802,7 +2850,7 @@ const AppCore = {
 
       document.getElementById('modal-overlay').style.display = 'none';
       if (this.state.isRunning && !this.audio.isSpeechProducing) {
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
         this.audio.startListening();
       }
     };
@@ -2890,7 +2938,7 @@ const AppCore = {
     document.getElementById('diag-close-btn')?.addEventListener('click', () => {
       document.getElementById('diag-panel')?.classList.remove('expanded');
       if (this.state.isRunning && !this.audio.isSpeechProducing) {
-        this.setStatus('hearing');
+        this.transitionTo('HEARING');
         this.audio.startListening();
       }
     });
