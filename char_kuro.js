@@ -1,4 +1,4 @@
-// [稼働Ver 作業版 Rev.14] 話者バトンタッチ完全撤廃・おやびん1対1対話原点回帰・実写一致ストライプメガネ＆前足後ろ足筋整合
+// [稼働Ver 作業版 Rev.15] 話者バトンタッチ完全撤廃・おやびん1対1対話原点回帰・JSON構文防護＆末尾アイコン透明設計
 /* ==========================================================================
    キャラクター定義プラグイン: クロちゃん (char_kuro.js)
    - ノルウェージャンフォレストキャット（1歳の女の子・前世は大発明家）
@@ -53,10 +53,15 @@ window.Character_Kuro = {
     happy:    { x: 0, y: 120, scale: 1.00, rotate: 0 }
   },
 
-  // ★ セリフ本文の加工を一切行わず、文末にアイコンを1つだけ添える透明な処理
+  // ★ セリフ本文の加工を一切行わず、文末にアイコンを1つだけ添える透明な処理（生JSON防護ガード付き）
   cleanEnding(text) {
     if (!text) return "";
     let t = text.trim();
+
+    // 生JSONが渡された場合は中身の破壊を防ぐためそのまま返す
+    if (t.startsWith('{') && t.includes('"display"')) {
+      return t;
+    }
 
     // 1. URLの除去
     t = t.replace(/https?:\/\/[^\s]+/gi, '').trim();
@@ -71,7 +76,7 @@ window.Character_Kuro = {
     // 4. 文末の余計な句点（。）を整理
     t = t.replace(/[。.]+$/u, '').trim();
 
-    // 5. 文末にアイコン（🐾）を1つだけ可愛く添えて完了！（語尾の捏造・置換・コネ回しは一切しない）
+    // 5. 文末にアイコン（🐾）を1つだけ添える
     return t + '🐾';
   },
 
@@ -177,7 +182,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
     return `
       <svg viewBox="0 0 220 250" id="cat-vector-avatar" style="width:290px; height:330px; position:absolute; bottom:0; left:50%; transform:translateX(-50%); transform-origin:bottom center; z-index:10; pointer-events:none;">
         <defs>
-          <!-- 漆黒＆ダークチャコールの豊かなシルキー被毛 -->
           <radialGradient id="grad-kuro-fur-main" cx="50%" cy="30%" r="70%">
             <stop offset="0%" stop-color="#334155"/>
             <stop offset="35%" stop-color="#1e293b"/>
@@ -185,7 +189,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <stop offset="100%" stop-color="#020617"/>
           </radialGradient>
 
-          <!-- 実写完全一致：首元から胸に広がる豊かなシルバーホワイト胸毛（多層グラデーション） -->
           <linearGradient id="grad-kuro-chest-silver" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="#ffffff"/>
             <stop offset="25%" stop-color="#f1f5f9"/>
@@ -194,7 +197,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <stop offset="100%" stop-color="#64748b"/>
           </linearGradient>
 
-          <!-- 実写完全一致：ゴールドがかった澄んだ黄緑色の美しい瞳（ゴールドライムアイ） -->
           <radialGradient id="grad-kuro-gold-lime-eye" cx="42%" cy="36%" r="62%">
             <stop offset="0%" stop-color="#fef08a"/>
             <stop offset="25%" stop-color="#d9f99d"/>
@@ -203,37 +205,31 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <stop offset="100%" stop-color="#1a2e05"/>
           </radialGradient>
 
-          <!-- 耳内側のベビーピンクグラデーション -->
           <linearGradient id="grad-kuro-ear-inner" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="#fbcfe8"/>
             <stop offset="65%" stop-color="#f472b6"/>
             <stop offset="100%" stop-color="#be185d"/>
           </linearGradient>
 
-          <!-- ふさふさ毛並みテクスチャ -->
           <linearGradient id="grad-kuro-tail-highlight" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#94a3b8" stop-opacity="0.45"/>
             <stop offset="50%" stop-color="#64748b" stop-opacity="0.2"/>
             <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
           </linearGradient>
 
-          <!-- ★ 実写完全一致：メガネの白黒斜めストライプパターン -->
           <pattern id="stripe-bw-vec" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
             <rect width="3" height="6" fill="#090d16"/>
             <rect width="3" height="6" fill="#ffffff" x="3"/>
           </pattern>
         </defs>
 
-        <!-- 1. 待機ポーズ (idle: 気品ある立ち座り姿・両前足に2本ずつの指筋) -->
         <g id="pose-idle" class="pose-group">
-          <!-- 極太ふさふさロングテイル (足元を優雅に包み込む) -->
           <g class="anim-idle-tail">
             <path d="M125 198 C158 194 192 178 200 145 C208 116 194 88 174 80 C160 74 148 84 154 98 C162 116 182 130 176 154 C168 174 142 188 120 192 Z" fill="url(#grad-kuro-fur-main)"/>
             <path d="M174 80 C190 96 186 125 170 144 C158 132 160 108 174 80 Z" fill="url(#grad-kuro-tail-highlight)"/>
             <path d="M145 190 Q170 180 185 155 Q195 130 180 105" stroke="#94a3b8" stroke-width="1.6" fill="none" opacity="0.35" stroke-linecap="round"/>
           </g>
 
-          <!-- スタイリッシュで引き締まった体躯 -->
           <g class="anim-idle-body">
             <ellipse cx="110" cy="162" rx="64" ry="68" fill="url(#grad-kuro-fur-main)"/>
             <g class="anim-idle-ruff">
@@ -242,7 +238,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             </g>
           </g>
 
-          <!-- 前足（両前足ともに指の筋が2本ずつ入る） -->
           <g>
             <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
             <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
@@ -253,7 +248,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           </g>
         </g>
 
-        <!-- 2. お話しポーズ (talking: 前足が下にあるため両足に指の筋2本ずつを完全追加) -->
         <g id="pose-talking" class="pose-group">
           <g class="anim-talking-tail">
             <path d="M145 178 C176 168 206 145 210 115 C214 90 196 68 180 64 C166 60 156 72 162 84 C170 102 192 116 186 138 C180 154 158 168 140 174 Z" fill="url(#grad-kuro-fur-main)"/>
@@ -264,7 +258,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 C132 135 122 146 110 148 C98 146 88 135 82 122 Z" fill="url(#grad-kuro-chest-silver)"/>
             <path d="M92 128 C84 140 80 156 88 168 C96 178 104 182 110 184 C116 182 124 178 132 168 C140 156 136 140 128 128 Z" fill="#ffffff" opacity="0.8"/>
           </g>
-          <!-- 前足（お話し中も両前足が下にあるため、2本ずつの指筋を装備） -->
           <g>
             <ellipse cx="88" cy="226" rx="13" ry="9" fill="#1e293b"/>
             <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
@@ -275,7 +268,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           </g>
         </g>
 
-        <!-- 3. 考え中ポーズ (thinking: 右手を上げて顎に添える。床に着く前足1本のみ筋2本、お座り後ろ足は筋なし！) -->
         <g id="pose-thinking" class="pose-group">
           <g class="anim-thinking-tail">
             <path d="M125 198 C158 194 192 178 200 145 C208 116 194 88 174 80 C160 74 148 84 154 98 C162 116 182 130 176 154 C168 174 142 188 120 192 Z" fill="url(#grad-kuro-fur-main)"/>
@@ -285,17 +277,13 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           <ellipse cx="110" cy="162" rx="64" ry="68" fill="url(#grad-kuro-fur-main)"/>
           <path d="M82 122 C70 135 62 154 70 172 C78 186 94 194 110 196 C126 194 142 186 150 172 C158 154 150 135 138 122 Z" fill="url(#grad-kuro-chest-silver)"/>
 
-          <!-- 足元：左お座り後ろ足（丸みのみ・筋なし） ＆ 床を着く右前足（2本の筋あり） -->
           <g id="thinking-feet-base">
-            <!-- 左お座り後ろ足（丸みのみで筋なし！解剖学的一致） -->
             <ellipse cx="88" cy="226" rx="14" ry="9.5" fill="#1e293b"/>
-            <!-- 右前足（床を支える前脚：2本の指筋あり） -->
             <ellipse cx="132" cy="226" rx="13" ry="9" fill="#1e293b"/>
             <line x1="129" y1="222" x2="129" y2="231" stroke="#334155" stroke-width="1.2"/>
             <line x1="135" y1="222" x2="135" y2="231" stroke="#334155" stroke-width="1.2"/>
           </g>
 
-          <!-- 顎下に添えて思索する左前足腕＆ピンク肉球 -->
           <g class="anim-thinking-arm">
             <path d="M78 212 C72 185 70 155 86 136 C92 142 94 165 92 195 C90 214 84 218 78 212 Z" fill="url(#grad-kuro-fur-main)"/>
             <ellipse cx="88" cy="132" rx="13" ry="10" fill="#1e293b" stroke="#334155" stroke-width="1.3"/>
@@ -305,7 +293,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           </g>
         </g>
 
-        <!-- 4. 喜びポーズ (happy: 写真3枚目完全再現！両手を高くバンザイ・ピンク肉球全開) -->
         <g id="pose-happy" class="pose-group">
           <g class="anim-happy-tail">
             <path d="M90 205 C50 198 12 160 8 115 C4 75 32 40 56 34 C72 30 84 46 76 62 C64 88 32 110 44 146 C54 175 80 194 100 200 Z" fill="url(#grad-kuro-fur-main)"/>
@@ -339,7 +326,6 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
           </g>
         </g>
 
-        <!-- 頭部ユニット -->
         <g id="head-unit" class="anim-idle-head">
           <g class="anim-ear-l">
             <polygon points="56,84 74,24 102,74" fill="url(#grad-kuro-fur-main)"/>
@@ -401,26 +387,19 @@ ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せ�
             <line x1="142" y1="112" x2="170" y2="119"/>
           </g>
 
-          <!-- ★ 実写完全一致：白黒ストライプ模様＆レンズ斜め反射光ハイライト付きメガネ -->
           <g id="cat-vector-accessories" style="display:none;">
             <g id="vec-acc-glasses">
-              <!-- 左レンズ＆白黒ストライプフレーム -->
               <circle cx="89" cy="92" r="17.5" fill="rgba(255, 255, 255, 0.22)" stroke="#090d16" stroke-width="4.2"/>
               <circle cx="89" cy="92" r="17.5" fill="none" stroke="url(#stripe-bw-vec)" stroke-width="2.8"/>
-              <!-- 左レンズ反射光ハイライト -->
               <path d="M78 86 Q86 80 94 82" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
 
-              <!-- 右レンズ＆白黒ストライプフレーム -->
               <circle cx="131" cy="92" r="17.5" fill="rgba(255, 255, 255, 0.22)" stroke="#090d16" stroke-width="4.2"/>
               <circle cx="131" cy="92" r="17.5" fill="none" stroke="url(#stripe-bw-vec)" stroke-width="2.8"/>
-              <!-- 右レンズ反射光ハイライト -->
               <path d="M120 86 Q128 80 136 82" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.85"/>
 
-              <!-- 立体ブリッジ（左右をつなぐ鼻当て） -->
               <path d="M106 91 Q110 86 114 91" stroke="#090d16" stroke-width="4.2" fill="none" stroke-linecap="round"/>
               <path d="M106 91 Q110 86 114 91" stroke="#ffffff" stroke-width="1.4" fill="none" opacity="0.75"/>
 
-              <!-- サイドテンプル（ツル） -->
               <line x1="72" y1="92" x2="58" y2="89" stroke="#090d16" stroke-width="3.2" stroke-linecap="round"/>
               <line x1="148" y1="92" x2="162" y2="89" stroke="#090d16" stroke-width="3.2" stroke-linecap="round"/>
             </g>
