@@ -1,4 +1,4 @@
-// [稼働Ver 作業版 Rev.9] 話者バトンタッチ完全撤廃・助手1対1対話原点回帰・愛されフクロウアニメーション完全同期
+// [稼働Ver 作業版 Rev.10] 話者バトンタッチ完全撤廃・助手1対1対話原点回帰・JSON構文防護＆末尾アイコン透明設計
 /* ==========================================================================
    キャラクター定義プラグイン: シロくん / ホウ博士 (char_shiro.js)
    - メガネフクロウ（手のひらサイズの男の子・未来の超時空学者）
@@ -52,10 +52,15 @@ window.Character_Shiro = {
     happy:    { x: 0, y: 228, scale: 1.00, rotate: 0 }
   },
 
-  // ★ セリフ本文の加工を一切行わず、文末にアイコンを1つだけ添える透明な処理
+  // ★ セリフ本文の加工を一切行わず、文末にアイコンを1つだけ添える透明な処理（生JSON防護ガード付き）
   cleanEnding(text) {
     if (!text) return "";
     let t = text.trim();
+
+    // 生JSONが渡された場合は中身の破壊を防ぐためそのまま返す
+    if (t.startsWith('{') && t.includes('"display"')) {
+      return t;
+    }
 
     // 1. URLの除去
     t = t.replace(/https?:\/\/[^\s]+/gi, '').trim();
@@ -70,7 +75,7 @@ window.Character_Shiro = {
     // 4. 文末の余計な句点（。）を整理
     t = t.replace(/[。.]+$/u, '').trim();
 
-    // 5. 文末にアイコン（🦉）を1つだけ可愛く添えて完了！（語尾の捏造・置換・コネ回しは一切しない）
+    // 5. 文末にアイコン（🦉）を1つだけ添える
     return t + '🦉';
   },
 
@@ -210,7 +215,6 @@ ${historyText || '今日も助手と一緒に有意義な研究活動を行い�
           </pattern>
         </defs>
 
-        <!-- 1. 待機ポーズ (idle: ぽっちゃり丸体型でちょこんと佇む・尻尾なし) -->
         <g id="pose-idle" class="pose-group">
           <path d="M38 105 C26 130 30 182 54 205 C44 175 42 135 52 112 Z" fill="#cbd5e1"/>
           <path d="M162 105 C174 130 170 182 146 205 C156 175 158 135 148 112 Z" fill="#cbd5e1"/>
@@ -227,7 +231,6 @@ ${historyText || '今日も助手と一緒に有意義な研究活動を行い�
           </g>
         </g>
 
-        <!-- 2. お話しポーズ (talking: 右翼を斜め上に上げて知的にジェスチャー) -->
         <g id="pose-talking" class="pose-group">
           <path d="M162 105 C174 130 170 182 146 205 C156 175 158 135 148 112 Z" fill="#cbd5e1"/>
           <g class="anim-talking-wing" style="transform-origin: 55px 125px;">
@@ -243,7 +246,6 @@ ${historyText || '今日も助手と一緒に有意義な研究活動を行い�
           </g>
         </g>
 
-        <!-- 3. 考え中ポーズ (thinking: 首をコテンと傾げ、右手(羽)を顎元に当てて愛らしく思索) -->
         <g id="pose-thinking" class="pose-group">
           <path d="M162 105 C174 130 170 182 146 205 C156 175 158 135 148 112 Z" fill="#cbd5e1"/>
 
@@ -264,7 +266,6 @@ ${historyText || '今日も助手と一緒に有意義な研究活動を行い�
           </g>
         </g>
 
-        <!-- 4. 喜びポーズ (happy: 両翼を広げて嬉しそうにパタパタ羽ばたく！) -->
         <g id="pose-happy" class="pose-group">
           <g class="anim-happy-wings" style="transform-origin: 100px 135px;">
             <path d="M52 130 C20 95 6 68 2 52 C20 64 42 94 58 138 Z" fill="#cbd5e1"/>
@@ -281,7 +282,6 @@ ${historyText || '今日も助手と一緒に有意義な研究活動を行い�
           </g>
         </g>
 
-        <!-- 頭部ユニット -->
         <g id="head-unit" class="anim-idle-head">
           <path d="M66 48 Q52 24 74 38 Z" fill="#cbd5e1"/>
           <path d="M134 48 Q148 24 126 38 Z" fill="#cbd5e1"/>
