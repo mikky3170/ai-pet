@@ -1,34 +1,81 @@
-// [稼働Ver 作業版 Rev.10] 映画名読み上げ強化・直近写真キャッシュ継続対話・表示読みJSON完全分離・VOICEVOXローカル待機5.5s・写真日付ロック厳格化
+// [稼働Ver 作業版 Rev.11] 応答オブジェクト入口正規化・自声エコー二重遮断・状態通知純化・映画名読み上げ強化・直近写真継続対話
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS (core_engine.js)
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
+   - 【応答オブジェクト入口正規化】TextFormatter.normalizeResponse により、Geminiの出力を即座に { display, speech } へ確定
+   - 【自声エコー完全根絶】表示用漢字テキストと読み用ひらがなテキストを二重登録し、Web Speech APIの認識ゆれを物理遮断
+   - 【状態通知の純化】AudioSpeechEngineから散発的なDOM直接操作を全廃し、イベント駆動でAppCoreへ通知
    - 【映画名・固有名詞読み上げ強化】ゴジラ-0（マイナスゼロ）、ゴジラ-1.0等の表記・音声認識ゆれを100%安定発音化
    - 【直近写真継続対話エンジン】撮影後30分以内の写真キャッシュ管理、写真に関する話題（何色、どこ、これ等）のインテリジェント判定
-   - 【二重敬称正規化エンジン】相手の敬称（くん/ちゃん/さん/様）を自動判別し、「かまぶーくんさん」などの二重重ねを物理防止
-   - 【表示読みJSON完全分離エンジン】GeminiのJSON構造（display / speech）をパースし、画面表示と発音を100%整合
-   - 【シチュエーション文脈生成】前回会話からの経過時間・在宅/外出・時間帯からリアルタイムな状況コンテキストを生成
    - 【ローカルVOICEVOX安定化】待機タイムアウトを5.5秒に設定しTailscale/PC直結の完走率最大化
    - 【絵日記写真日付完全厳格化】写真プール取得時に日付キー（dateKey）の完全一致を強制し、過去写真の他日漏れを100%根絶
-   - 【自声エコー完全根絶】音声生成準備〜再生完了〜余韻までマイク絶対遮断フラグ（isSpeechProducing）で物理ロック
    - Gemini連携モデル完全固定（gemini-3.5-flash-lite / gemini-flash-lite-latest）
    ========================================================================== */
 
-/* ★ 本質的テキストフォーマッター（表記とよみの明快な分離＆JSONパースエンジン） */
+/* ★ 本質的テキストフォーマッター（表記とよみの明快な分離＆入口正規化エンジン） */
 const TextFormatter = {
-  // JSON構造または文字列から画面表示用テキストを抽出・整形
-  formatDisplayText(rawText) {
-    if (!rawText) return "";
-    let t = rawText;
+  // Geminiからの生出力を即座に完全な表示用／読み上げ用オブジェクトに正規化
+  normalizeResponse(rawText) {
+    if (!rawText) {
+      const cur = getCurChar();
+      const ending = cur.id === 'shiro' ? 'ホ！' : 'ニャン🐾';
+      return { display: `……${ending}`, speech: "……" };
+    }
 
-    // JSON形式（```json ... ``` または 生JSON）の場合はパースを試みる
-    if (typeof t === 'string' && (t.includes('"display"') || t.trim().startsWith('{'))) {
+    let t = typeof rawText === 'string' ? rawText.trim() : String(rawText);
+    let display = "";
+    let speech = "";
+
+    // JSON形式（```json ... ``` または 生JSON）のパース試行
+    if (t.includes('"display"') || t.startsWith('{')) {
       try {
         const cleanJsonStr = t.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
         const parsed = JSON.parse(cleanJsonStr);
-        if (parsed && parsed.display) {
-          t = parsed.display;
+        if (parsed) {
+          if (parsed.display) display = String(parsed.display).trim();
+          if (parsed.speech) speech = String(parsed.speech).trim();
         }
+      } catch (e) {
+        const matchDisplay = t.match(/"display"\s*:\s*"([^"]+)"/);
+        const matchSpeech = t.match(/"speech"\s*:\s*"([^"]+)"/);
+        if (matchDisplay) display = matchDisplay[1].trim();
+        if (matchSpeech) speech = matchSpeech[1].trim();
+      }
+    }
+
+    // JSONでなかった場合、またはパース不能時の平文フォールバック
+    if (!display) {
+      display = t;
+    }
+    if (!speech) {
+      speech = display;
+    }
+
+    // 表示用の整形
+    display = this.formatDisplayText(display);
+
+    // キャラクターごとの末尾アイコン付与
+    const cur = getCurChar();
+    display = cur.cleanEnding ? cur.cleanEnding(display) : display;
+
+    // 読み用の整形
+    speech = this.formatSpeechText(speech);
+
+    return { display, speech };
+  },
+
+  // 画面表示用テキストの整形
+  formatDisplayText(rawText) {
+    if (!rawText) return "";
+    let t = String(rawText);
+
+    // 生JSONが混入していた場合の防護
+    if (t.includes('"display"') || t.trim().startsWith('{')) {
+      try {
+        const cleanJsonStr = t.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+        const parsed = JSON.parse(cleanJsonStr);
+        if (parsed && parsed.display) t = parsed.display;
       } catch (e) {
         const match = t.match(/"display"\s*:\s*"([^"]+)"/);
         if (match) t = match[1];
@@ -44,32 +91,30 @@ const TextFormatter = {
     return t;
   },
 
-  // JSON構造または文字列からVOICEVOX読み上げ用テキストを抽出・整形
+  // VOICEVOX読み上げ用テキストの抽出・整形
   formatSpeechText(rawText) {
     if (!rawText) return "";
-    let t = rawText;
+    let t = String(rawText);
 
-    // JSON形式の場合は speech 側の正確な読み仮名を採用
-    if (typeof t === 'string' && (t.includes('"speech"') || t.trim().startsWith('{'))) {
+    // 生JSONが混入していた場合の防護
+    if (t.includes('"speech"') || t.trim().startsWith('{')) {
       try {
         const cleanJsonStr = t.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
         const parsed = JSON.parse(cleanJsonStr);
-        if (parsed && parsed.speech) {
-          t = parsed.speech;
-        }
+        if (parsed && parsed.speech) t = parsed.speech;
       } catch (e) {
         const match = t.match(/"speech"\s*:\s*"([^"]+)"/);
         if (match) t = match[1];
       }
     }
 
-    // ★ 映画名・固有名詞の特殊発音正規化（ゴジラシリーズ等の確実な読み上げ）
+    // 映画名・固有名詞の特殊発音正規化
     t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:0(?:\.0)?|ゼロ|ぜろ)/gui, 'ゴジラマイナスゼロ');
     t = t.replace(/ゴジラ\s*[-−―ー—]?\s*(?:1(?:\.0)?|ワン|わん)/gui, 'ゴジラマイナスワン');
     t = t.replace(/ゴジラ\s*マイナス\s*(?:0|ゼロ|ぜろ)/gui, 'ゴジラマイナスゼロ');
     t = t.replace(/ゴジラ\s*マイナス\s*(?:1|ワン|わん)/gui, 'ゴジラマイナスワン');
 
-    // 通常テキストの場合のルビ・括弧解析フォールバック
+    // ルビ・括弧解析フォールバック
     t = t.replace(/[『「【《〈][^『「【《〈）)]+[（(]([ぁ-んァ-ヶー\s・\d]+)[）)][』」】》〉]/gu, ' $1 ');
     t = t.replace(/[『「【《〈][^『「【《〈』」】》〉]+[』」】》〉]\s*[（(]([ぁ-んァ-ヶー\s・\d]+)[）)]/gu, ' $1 ');
     t = t.replace(/[A-Za-z0-9ぁ-んァ-ヶ一-龠々ー・×\-\.\s]{2,}\s*[（(]([ぁ-んァ-ヶー\s・\d]{2,})[）)]/gu, ' $1 ');
@@ -365,6 +410,9 @@ class AudioSpeechEngine {
     this.isReadingAloud = false;
     this.readingAbortController = null;
 
+    // 状態コールバック（DOM直接操作ではなくイベント通知）
+    this.onSpeechStart = null;
+    this.onSpeechEnd = null;
     this.onSpeechFinal = null;
     this.onListeningStatus = null;
     this.onBargeIn = null;
@@ -609,9 +657,8 @@ class AudioSpeechEngine {
   playImmediateFiller(type = 'general') {
     this.unlockMasterAudio();
     this.playEffect('aizuchi');
-    if (typeof AppCore !== 'undefined') {
-      if (AppCore.setStatus) AppCore.setStatus('thinking');
-      if (AppCore.avatar && AppCore.state.isRunning) AppCore.avatar.setEmotion('thinking');
+    if (typeof AppCore !== 'undefined' && AppCore.transitionTo) {
+      AppCore.transitionTo('THINKING');
     }
   }
 
@@ -639,7 +686,7 @@ class AudioSpeechEngine {
         localBaseUrl = 'http://localhost:50021';
       }
 
-      // ★ ローカル直結待機時間を 5.5秒に設定し完走率を最大化
+      // ローカル直結待機時間を 5.5秒に設定し完走率を最大化
       if (localBaseUrl) {
         const localAbortCtrl = new AbortController();
         const localTimeoutId = setTimeout(() => localAbortCtrl.abort(), 5500);
@@ -752,6 +799,7 @@ class AudioSpeechEngine {
     return this.ttsRequestChain;
   }
 
+  // ★ 表示用テキストと発音用テキストの双方を照合する二重防護エコーキャンセラ
   _isSelfEcho(text) {
     if (!text) return true;
     const cleanInput = text.trim();
@@ -762,7 +810,7 @@ class AudioSpeechEngine {
     if (/^(?:だホ|ホ|ホウ|だニャ|ニャン|ニャ|ホな|ホよ)[！!？\?]*$/.test(cleanInput)) return true;
 
     const now = Date.now();
-    const isVeryRecent = (now - this.lastSpeechEndTime) < 1800;
+    const isVeryRecent = (now - this.lastSpeechEndTime) < 2200;
 
     for (const spoken of this.recentSpokenTexts) {
       if (!spoken) continue;
@@ -770,11 +818,11 @@ class AudioSpeechEngine {
 
       if (normalizedSpoken === normalizedInput) return true;
 
-      if (isVeryRecent && normalizedSpoken.length >= 10) {
+      if (isVeryRecent && normalizedSpoken.length >= 8) {
         const tail10 = normalizedSpoken.slice(-10);
         const tail15 = normalizedSpoken.slice(-15);
-        if (normalizedInput.length >= 2 && (tail10.endsWith(normalizedInput) || tail15.endsWith(normalizedInput))) {
-          Logger.log(`[Mic] 🛑 長文末尾エコーを検知・除外: 「${cleanInput}」 (直前発話末尾と一致)`, "info");
+        if (normalizedInput.length >= 2 && (tail10.endsWith(normalizedInput) || tail15.endsWith(normalizedInput) || normalizedSpoken.includes(normalizedInput))) {
+          Logger.log(`[Mic] 🛑 自声エコー検知・除外: 「${cleanInput}」 (発話履歴一致)`, "info");
           return true;
         }
       }
@@ -782,7 +830,8 @@ class AudioSpeechEngine {
     return false;
   }
 
-  async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null) {
+  // ★ 音声発話（表示テキスト displayTextOverride と発音テキスト speechText を安全に処理）
+  async speak(text, speakerIdOverride = null, onStart = null, onEnd = null, cooldownOverride = null, displayTextOverride = null) {
     this.isSpeechProducing = true;
     this.stopSpeaking();
     this.stopListening();
@@ -792,24 +841,29 @@ class AudioSpeechEngine {
       ? speakerIdOverride
       : (typeof AppCore !== 'undefined' && AppCore.getSpeakerId ? AppCore.getSpeakerId() : (getCurChar().defaultSpeakerId || 10));
 
-    // ★ 表示読み分離：formatSpeechText で正確な発音テキスト（ひらがな中心）を抽出
+    // 発音用テキストの抽出とサニタイズ
     let clean = TextFormatter.formatSpeechText(text || '');
     clean = clean.replace(/https?:\/\/[^\s]+/gi, '');
     clean = this._convertAllNumbersToKana(clean).replace(/<[^>]*>/g, '').replace(/[*#_~`🐾🐱✨❤️💖🎀🧠⚡🩺💭🎵🍜🥟📍📰🗺️⭐💥📒📖🌐🔷🔴🌤️🛍️💡🐟📷🏠🔮🦉🌰]/gu, '').trim();
+
+    // ★ 表示用テキスト（漢字混じり）と発音用テキスト（ひらがな化）の双方を自声エコー防止リストに登録
+    const dispClean = displayTextOverride ? TextFormatter.formatDisplayText(displayTextOverride) : TextFormatter.formatDisplayText(text || '');
+    if (dispClean) this.recentSpokenTexts.unshift(dispClean);
+    if (clean) this.recentSpokenTexts.unshift(clean);
+    if (this.recentSpokenTexts.length > 8) this.recentSpokenTexts.length = 8;
 
     let dynamicCooldown = (cooldownOverride !== null) ? cooldownOverride : (clean.length > 70 ? 600 : 400);
 
     if (!clean) {
       this.isSpeechProducing = false;
-      if (onStart) onStart(); if (onEnd) onEnd();
+      if (onStart) onStart();
+      if (onEnd) onEnd();
+      if (this.onSpeechEnd) this.onSpeechEnd();
       setTimeout(() => {
         if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning && !this.isActionButtonLocked) this.startListening();
       }, dynamicCooldown);
       return;
     }
-
-    this.recentSpokenTexts.unshift(clean);
-    if (this.recentSpokenTexts.length > 5) this.recentSpokenTexts.pop();
 
     try {
       const blobAudioUrl = await this._getVoicevoxBlobUrl(clean, speakerId);
@@ -818,12 +872,7 @@ class AudioSpeechEngine {
 
       this.masterAudio.onplaying = () => {
         this.isSpeaking = true;
-        if (typeof AppCore !== 'undefined' && AppCore.setStatus) {
-          AppCore.setStatus('speaking', "🗣️ お話し中♪");
-        } else {
-          const st = document.getElementById('status-text');
-          if (st) { st.className = "status-speaking"; st.textContent = "🗣️ お話し中♪"; }
-        }
+        if (this.onSpeechStart) this.onSpeechStart();
         if (onStart) onStart();
       };
 
@@ -831,12 +880,12 @@ class AudioSpeechEngine {
         this.isSpeaking = false;
         this.lastSpeechEndTime = Date.now();
         if (onEnd) onEnd();
+        if (this.onSpeechEnd) this.onSpeechEnd();
         
         setTimeout(() => {
           this.isSpeechProducing = false;
           if (typeof AppCore !== 'undefined' && AppCore.state) {
             if (AppCore.state.isRunning && !this.isSpeaking && !this.isReadingAloud && !this.isActionButtonLocked && !AppCore.state.isThinking && !AppCore.state.isProcessingInput) {
-              if (AppCore.setStatus) AppCore.setStatus('hearing');
               this.startListening();
             }
           }
@@ -846,11 +895,12 @@ class AudioSpeechEngine {
       this.masterAudio.onerror = (e) => {
         Logger.log(`[Audio] 再生エラー発生`, "error");
         this.isSpeaking = false;
-        if (onStart) onStart(); if (onEnd) onEnd();
+        if (onStart) onStart();
+        if (onEnd) onEnd();
+        if (this.onSpeechEnd) this.onSpeechEnd();
         setTimeout(() => {
           this.isSpeechProducing = false;
           if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning) {
-            if (AppCore.setStatus) AppCore.setStatus('hearing');
             this.startListening();
           }
         }, dynamicCooldown);
@@ -863,12 +913,12 @@ class AudioSpeechEngine {
       this.isSpeaking = false;
       if (onStart) onStart();
       if (onEnd) onEnd();
+      if (this.onSpeechEnd) this.onSpeechEnd();
 
       setTimeout(() => {
         this.isSpeechProducing = false;
         this.lastSpeechEndTime = Date.now();
         if (typeof AppCore !== 'undefined' && AppCore.state && AppCore.state.isRunning && !this.isActionButtonLocked && !AppCore.state.isThinking) {
-          if (AppCore.setStatus) AppCore.setStatus('hearing');
           this.startListening();
         }
       }, dynamicCooldown);
@@ -904,7 +954,9 @@ class AudioSpeechEngine {
       sentences = [readBody.trim()];
     }
 
-    if (typeof AppCore !== 'undefined' && AppCore.setStatus) AppCore.setStatus('speaking', `📖 朗読中♪`);
+    if (typeof AppCore !== 'undefined' && AppCore.transitionTo) {
+      AppCore.transitionTo('SPEAKING', '📖 朗読中♪');
+    }
 
     for (let i = 0; i < sentences.length; i++) {
       const isStillRunning = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isRunning : true;
@@ -937,7 +989,7 @@ class AudioSpeechEngine {
     this.lastSpeechEndTime = Date.now();
     if (typeof AppCore !== 'undefined') {
       if (AppCore.avatar && AppCore.state && AppCore.state.isRunning) AppCore.avatar.setEmotion('idle');
-      if (AppCore.setStatus) AppCore.setStatus('hearing');
+      if (AppCore.transitionTo) AppCore.transitionTo('HEARING');
     }
     if (onComplete) onComplete();
 
@@ -981,7 +1033,6 @@ class AudioSpeechEngine {
       this.isListening = true;
       this.isStarting = false;
       Logger.log(`[Mic] 👂 マイク待機開始（エメラルドグリーン点灯）`, "info");
-      if (typeof AppCore !== 'undefined' && AppCore.setStatus) AppCore.setStatus('hearing');
       if (this.onListeningStatus) this.onListeningStatus(true);
     };
 
@@ -1217,7 +1268,7 @@ const StorageManager = {
     return `${baseKey}_${curId}`;
   },
 
-  // ★ 直近写真キャッシュ管理（30分以内の写真を見返しながら会話可能にする）
+  // 直近写真キャッシュ管理（30分以内の写真を見返しながら会話可能にする）
   setLastSharedPhoto(base64Data) {
     if (!base64Data) return;
     const cacheObj = {
@@ -1243,7 +1294,6 @@ const StorageManager = {
     return null;
   },
 
-  // ★ ユーザーの発言が写真に関係しているか判定
   isPhotoRelatedTopic(promptText) {
     if (!promptText) return false;
     const pattern = /(?:写真|写っ|画像|さっきの|これ|この写真|写ってる|何色|誰|どこにある|何が写|見せて|どんな感じ|カメラ)/;
@@ -1390,20 +1440,17 @@ const StorageManager = {
     localStorage.setItem(key, JSON.stringify([]));
   },
 
+  // ★ 確定した表示テキスト（displayText）をそのまま保存（生JSONのたらい回し・破壊を根絶）
   appendChatLog(role, text, photoUrl = null) {
     if (!text) return;
     const timeInfo = TimeProvider.getCurrentInfo();
-    let cleanText = (text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
-    if (role === 'model') {
-      cleanText = getCurChar().cleanEnding ? getCurChar().cleanEnding(cleanText) : cleanText;
-    }
-    if (!cleanText) return;
+    const cleanDisplay = TextFormatter.formatDisplayText(text);
+    if (!cleanDisplay) return;
 
-    const displayLoggedText = (role === 'model') ? TextFormatter.formatDisplayText(cleanText) : cleanText;
     const isAssistant = (typeof AppCore !== 'undefined' && AppCore.state) ? AppCore.state.isAssistantMode : false;
 
     const entry = {
-      role, text: displayLoggedText,
+      role, text: cleanDisplay,
       mode: isAssistant ? 'assistant' : 'pet',
       time: timeInfo.clock, date: timeInfo.lifeLogKey,
       photoUrl: null,
@@ -1808,7 +1855,7 @@ const StorageManager = {
     const pkg = {
       format: "kuro_pure_data_package_v2",
       characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.3.2",
+      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.4.0",
       exportedAt: now.toLocaleString('ja-JP'),
       memories: this.loadMemories([]),
       diaries: this.loadAllDiaries(),
