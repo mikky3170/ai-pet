@@ -1,10 +1,10 @@
-<!-- [作業版 Rev.1] 写真原本JSON・本文未作成日での写真100%閲覧可能化・動的音声認識辞書エディター新設 -->
+<!-- [作業版 Rev.2] 写真なし日手描きスケッチカード完全同期・原本JSON高画質保護・動的音声認識辞書エディター -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 v1.1.1</title>
+  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 v1.4.0</title>
 
   <style>
     :root {
@@ -524,6 +524,78 @@
       background: rgba(69, 10, 10, 0.9);
     }
 
+    /* ★ 写真なし日スケッチカード（メインアプリと完全同期） */
+    .diary-sketch-duo-container {
+      width: 100%;
+      height: 140px;
+      background: linear-gradient(135deg, #fffdf8 0%, #fff7ed 100%);
+      border: 2px dashed #fed7aa;
+      border-radius: 16px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-shrink: 0;
+      box-shadow: inset 0 2px 6px rgba(254, 215, 170, 0.25);
+    }
+    .sketch-art-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+      min-width: 0;
+    }
+    .sketch-icon-stamp {
+      font-size: 46px;
+      filter: drop-shadow(0 2px 6px rgba(234, 88, 12, 0.2));
+      flex-shrink: 0;
+      animation: stampFloatViewer 3.2s ease-in-out infinite alternate;
+    }
+    @keyframes stampFloatViewer {
+      0% { transform: translateY(0) rotate(-2deg); }
+      100% { transform: translateY(-4px) rotate(3deg); }
+    }
+    .sketch-text-box {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+    }
+    .sketch-title {
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #c2410c;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .sketch-subtitle {
+      font-size: 11.5px;
+      color: #ea580c;
+      line-height: 1.45;
+      word-break: break-all;
+      font-weight: 700;
+    }
+    .btn-sketch-add-photo {
+      background: #ffffff;
+      border: 1.5px solid #f97316;
+      color: #c2410c;
+      border-radius: 12px;
+      padding: 7px 12px;
+      font-size: 11.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(234, 88, 12, 0.15);
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-sketch-add-photo:hover { background: #ffedd5; }
+
     .diary-edit-container {
       flex: 1;
       display: flex;
@@ -801,7 +873,6 @@
     }
     .btn-save-memories-main:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
-    /* 音声辞書エディター専用UI */
     .dict-item-row {
       display: flex;
       align-items: center;
@@ -925,7 +996,7 @@
     <div class="header-logo">
       <span>📖</span>
       <span>クロちゃんの思い出アルバム ＆ バックアップ エディター</span>
-      <span class="badge" id="header-pkg-version">v1.1.1 対応</span>
+      <span class="badge" id="header-pkg-version">v1.4.0 対応</span>
     </div>
 
     <div class="header-actions">
@@ -933,7 +1004,7 @@
       <input type="file" id="json-file-input" accept=".json" style="display: none;">
 
       <button type="button" class="btn-action-top save-btn" id="btn-save-package" style="display: none;">💾 スマホに戻す保存</button>
-      <button type="button" class="btn-action-top mem-btn" id="btn-open-mem-settings" style="display: none;">📌 クロの記憶帳・設定</button>
+      <button type="button" class="btn-action-top mem-btn" id="btn-open-mem-settings" style="display: none;">📌 記憶帳・設定</button>
       <button type="button" class="btn-action-top guide-btn" id="btn-open-guide" style="display: none;">❓ ガイド</button>
     </div>
   </header>
@@ -981,7 +1052,6 @@
           </div>
         </div>
 
-        <!-- 本文未作成時のみコンパクトに表示される案内 -->
         <div class="diary-empty-card" id="diary-empty-view" style="display:none;">
           <div class="diary-empty-icon">🐾📖</div>
           <div class="diary-empty-title">この日はまだ絵日記が書かれていませんニャ🐾</div>
@@ -991,7 +1061,7 @@
         </div>
 
         <div id="diary-editor-view" style="display:flex; flex-direction:column; gap:10px; flex:1;">
-          <!-- 写真枠：写真が存在する日は常に100%表示 -->
+          <!-- 写真がある日用コンテナ -->
           <div class="diary-photo-duo-container" id="diary-photo-container">
             <div class="photo-duo-left" id="diary-main-photo-box" title="クリックでフルサイズ拡大プレビュー">
               <img src="" alt="メイン写真" id="diary-main-photo-img">
@@ -1009,6 +1079,19 @@
             </div>
           </div>
 
+          <!-- ★ 写真なし日用スケッチカード（メインアプリと完全同期） -->
+          <div class="diary-sketch-duo-container" id="diary-sketch-container" style="display:none;">
+            <div class="sketch-art-box">
+              <span class="sketch-icon-stamp" id="sketch-icon-stamp">🐾☀️</span>
+              <div class="sketch-text-box">
+                <span class="sketch-title" id="sketch-title-text">🎨 クロのお絵描きスケッチ（クロ 筆）</span>
+                <span class="sketch-subtitle" id="sketch-subtitle-text">『写真の代わりにクロが一生懸命お絵描きしたニャン♪』</span>
+              </div>
+            </div>
+            <button type="button" class="btn-sketch-add-photo" id="btn-sketch-upload-trigger">📷 写真を貼る</button>
+            <input type="file" id="sketch-photo-input" accept="image/*" style="display:none;">
+          </div>
+
           <div class="diary-edit-container">
             <div class="diary-edit-label">
               <span>✍️ 日記本文（直接推敲・修正できます）:</span>
@@ -1018,7 +1101,7 @@
           </div>
 
           <div class="diary-comment-edit-box">
-            <span class="diary-comment-label">🐾 ひとこと記録:</span>
+            <span class="diary-comment-label" id="diary-comment-label">🐾 ひとこと記録:</span>
             <textarea class="diary-comment-textarea" id="diary-comment-input" rows="2" placeholder="（ひとこと記録なし）"></textarea>
           </div>
         </div>
@@ -1055,7 +1138,6 @@
         <button type="button" class="mem-tab-btn" data-target="tab-maint">🗄️ データ管理・過去の大掃除</button>
       </div>
 
-      <!-- 記憶帳タブ -->
       <div class="mem-tab-pane active" id="tab-memories">
         <div style="font-size:12px; color:#475569; line-height:1.5;">
           一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の「💾 記憶の変更を保存するニャ！」を押してくださいニャン🐾
@@ -1073,7 +1155,6 @@
         </button>
       </div>
 
-      <!-- 音声認識辞書タブ（新設） -->
       <div class="mem-tab-pane" id="tab-dictionary">
         <div style="font-size:12px; color:#475569; line-height:1.55;">
           <b>🗣️ マイクの聞き間違い言い換え辞書:</b><br>
@@ -1096,13 +1177,11 @@
         </button>
       </div>
 
-      <!-- 設定確認タブ -->
       <div class="mem-tab-pane" id="tab-settings">
         <div style="font-size:12px; color:#475569;">スマホアプリ本体の音声や見た目の設定内容です。</div>
         <div id="settings-view-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; font-size:12px;"></div>
       </div>
 
-      <!-- 過去データ管理タブ -->
       <div class="mem-tab-pane" id="tab-maint">
         <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px; font-size:12px; color:#9a3412; line-height:1.55;">
           <b>🗄️ 過去データの救済・大掃除:</b><br>
@@ -1156,6 +1235,7 @@
         <div class="guide-sec-body">
           ・<b>日付をめくる</b>: 上部の「◀ 前の日 / 次の日 ▶」やプルダウンで過去の思い出ページを開きます。<br>
           ・<b>写真を大画面で鑑賞</b>: 写真をクリックすると全画面フルサイズで綺麗に拡大プレビューされます。<br>
+          ・<b>写真がない日のスケッチ</b>: 写真のない日は、クロちゃんやシロくんが描いた手描きスケッチイラストが温かく表示されます。<br>
           ・<b>印刷 / PDF保存</b>: 右上の「🖨️ 印刷」を押すと、見開きレイアウトのまま紙やPDFへ美しく出力できます。
         </div>
       </div>
@@ -1164,7 +1244,7 @@
         <div class="guide-sec-title">② 日記や記憶・音声辞書を直す（エディター機能）</div>
         <div class="guide-sec-body">
           ・<b>【絵日記の推敲】</b>: メイン画面の左ページで、過去の日記本文やクロのひとことを直接キーボードで手直しできます。スナップ写真一覧の「✕」を押すと不要な写真を1枚ずつ整理できます。<br>
-          ・<b>【記憶帳 ＆ 音声辞書】</b>: 右上の「📌 クロの記憶帳・設定」を開くと、パートナーとの大切な記憶や、マイクの誤変換言い換え辞書をじっくり編集・更新できます。
+          ・<b>【記憶帳 ＆ 音声辞書】</b>: 右上の「📌 記憶帳・設定」を開くと、パートナーとの大切な記憶や、マイクの誤変換言い換え辞書をじっくり編集・更新できます。
         </div>
       </div>
 
@@ -1202,7 +1282,7 @@
   <script src="version.js"></script>
   <script>
     /* ==========================================================================
-       バックアップデータ解析・エディター＆高画質保護エンジン (v1.1.1)
+       バックアップデータ解析・エディター＆高画質保護エンジン (v1.4.0)
        ========================================================================== */
     let gPackageData = null;
     let gSortedDateKeys = [];
@@ -1254,6 +1334,14 @@
     const diaryCharCounter = document.getElementById('diary-char-counter');
     const btnDetachPhoto = document.getElementById('btn-detach-main-photo');
     const mainPhotoSizeBadge = document.getElementById('main-photo-size-badge');
+
+    const diaryPhotoContainer = document.getElementById('diary-photo-container');
+    const diarySketchContainer = document.getElementById('diary-sketch-container');
+    const sketchIconStamp = document.getElementById('sketch-icon-stamp');
+    const sketchTitleText = document.getElementById('sketch-title-text');
+    const sketchSubtitleText = document.getElementById('sketch-subtitle-text');
+    const btnSketchUpload = document.getElementById('btn-sketch-upload-trigger');
+    const sketchPhotoInput = document.getElementById('sketch-photo-input');
 
     btnOpenFile.onclick = () => fileInput.click();
     dropzoneCard.onclick = () => fileInput.click();
@@ -1403,7 +1491,6 @@
       gSortedDateKeys = Array.from(dateSet).sort().reverse();
       if (gSortedDateKeys.length === 0) gSortedDateKeys.push(todayKey);
 
-      // 写真またはしっかりした日記がある日を初期選択
       let initialKey = gSortedDateKeys[0];
       const hasContentOrPhoto = (k) => {
         const d = (pkg.diaries || []).find(item => item.dateKey === k);
@@ -1422,7 +1509,7 @@
       btnOpenMemSettings.style.display = 'flex';
       btnOpenGuide.style.display = 'flex';
 
-      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.1.1";
+      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.4.0";
       const verTag = document.getElementById('header-pkg-version');
       if (verTag) verTag.textContent = `${currentVer} （${pkg.exportedAt || 'バックアップ'}）`;
 
@@ -1516,7 +1603,7 @@
       };
     }
 
-    // ★重要改修：本文が未作成の日であっても写真プールが存在すれば写真枠を100%表示
+    // ★ 写真なし日の手描きスケッチカード表示を完全同期
     function renderCurrentSpread() {
       const curIdx = gSortedDateKeys.indexOf(gCurrentDateKey);
       btnPrevDay.disabled = (curIdx >= gSortedDateKeys.length - 1);
@@ -1534,6 +1621,8 @@
       const duoRightHeaderText = document.getElementById('duo-right-header-text');
       const snapGridBox = document.getElementById('snap-grid-box');
 
+      const isShiro = (pkg.characterId === 'shiro' || pkg.settings?.activeCharacter === 'shiro');
+
       dateDisp.textContent = diary?.fullDate || `${gCurrentDateKey}`;
       weatherDisp.textContent = `🌤️ ${diary?.weather || '快晴'}`;
       tempDisp.textContent = `🌡️ ${diary?.temperature || '22'}℃`;
@@ -1542,7 +1631,12 @@
       diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
       diaryCommentInput.value = diary?.kuroComment || "";
 
-      const activeId = pkg.characterId || pkg.settings?.activeCharacter || 'kuro';
+      const commentLabel = document.getElementById('diary-comment-label');
+      if (commentLabel) {
+        commentLabel.textContent = isShiro ? '🦉 ホウ博士のひとこと:' : '🐾 クロのひとこと:';
+      }
+
+      const activeId = isShiro ? 'shiro' : 'kuro';
       const poolKey = activeId === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${activeId}_${gCurrentDateKey}`;
       if (!pkg.dailyPhotoPools) pkg.dailyPhotoPools = {};
       if (!pkg.dailyPhotoPools[poolKey] && pkg.dailyPhotoPools[`kuro_daily_photos_${gCurrentDateKey}`]) {
@@ -1557,52 +1651,43 @@
 
       const hasPhotos = (photos.length > 0 || !!diary?.photo);
 
-      // 本文未作成案内メッセージの表示制御
-      if (!hasProperDiary && !hasPhotos) {
-        diaryEmptyView.style.display = 'flex';
-      } else if (!hasProperDiary && hasPhotos) {
-        diaryEmptyView.style.display = 'flex';
-      } else {
-        diaryEmptyView.style.display = 'none';
-      }
-      diaryEditorView.style.display = 'flex';
+      // 写真有無によるコンテナ表示切替
+      if (hasPhotos) {
+        diaryPhotoContainer.style.display = 'flex';
+        diarySketchContainer.style.display = 'none';
 
-      const mainPhotoBase64 = diary?.photo || (photos.length > 0 ? photos[0].base64 : null);
+        const mainPhotoBase64 = diary?.photo || (photos.length > 0 ? photos[0].base64 : null);
+        if (mainPhotoBase64) {
+          photoImg.src = mainPhotoBase64;
+          photoImg.style.display = 'block';
+          btnDetachPhoto.style.display = 'block';
+          photoBox.onclick = () => openZoom(mainPhotoBase64, `📖 ${dateDisp.textContent} の思い出写真`);
 
-      if (mainPhotoBase64) {
-        photoImg.src = mainPhotoBase64;
-        photoImg.style.display = 'block';
-        btnDetachPhoto.style.display = 'block';
-        photoBox.onclick = () => openZoom(mainPhotoBase64, `📖 ${dateDisp.textContent} の思い出写真`);
-
-        const mainKB = calcBase64KB(mainPhotoBase64);
-        mainPhotoSizeBadge.style.display = 'block';
-        mainPhotoSizeBadge.textContent = `${formatKBDisplay(mainKB)}${mainKB > 100 ? ' ⚠️ 未圧縮' : ''}`;
-        mainPhotoSizeBadge.classList.toggle('is-large', mainKB > 100);
-      } else {
-        photoImg.src = '';
-        photoImg.style.display = 'none';
-        btnDetachPhoto.style.display = 'none';
-        mainPhotoSizeBadge.style.display = 'none';
-        photoBox.onclick = null;
-      }
-
-      btnDetachPhoto.onclick = (e) => {
-        e.stopPropagation();
-        if (diary) {
-          diary.photo = null;
-          renderCurrentSpread();
+          const mainKB = calcBase64KB(mainPhotoBase64);
+          mainPhotoSizeBadge.style.display = 'block';
+          mainPhotoSizeBadge.textContent = `${formatKBDisplay(mainKB)}${mainKB > 100 ? ' ⚠️ 未圧縮' : ''}`;
+          mainPhotoSizeBadge.classList.toggle('is-large', mainKB > 100);
+        } else {
+          photoImg.src = '';
+          photoImg.style.display = 'none';
+          btnDetachPhoto.style.display = 'none';
+          mainPhotoSizeBadge.style.display = 'none';
+          photoBox.onclick = null;
         }
-      };
 
-      let dayPhotosTotalKB = 0;
-      photos.forEach(p => { dayPhotosTotalKB += calcBase64KB(p.base64); });
-      duoRightHeaderText.textContent = `📷 スナップ一覧（${photos.length}枚 / 計${formatKBDisplay(dayPhotosTotalKB)}）`;
-      snapGridBox.innerHTML = '';
+        btnDetachPhoto.onclick = (e) => {
+          e.stopPropagation();
+          if (diary) {
+            diary.photo = null;
+            renderCurrentSpread();
+          }
+        };
 
-      if (photos.length === 0) {
-        snapGridBox.innerHTML = '<div style="align-self:center;text-align:center;color:#94a3b8;font-size:11px;padding:30px 10px;">スナップなし</div>';
-      } else {
+        let dayPhotosTotalKB = 0;
+        photos.forEach(p => { dayPhotosTotalKB += calcBase64KB(p.base64); });
+        duoRightHeaderText.textContent = `📷 スナップ一覧（${photos.length}枚 / 計${formatKBDisplay(dayPhotosTotalKB)}）`;
+        snapGridBox.innerHTML = '';
+
         photos.forEach((p, pIdx) => {
           const isSelected = (mainPhotoBase64 === p.base64);
           const pKB = calcBase64KB(p.base64);
@@ -1623,7 +1708,6 @@
               diary.photo = p.base64;
               renderCurrentSpread();
             } else {
-              // 本文が未作成の日でもメイン写真を選択可能にする
               if (!pkg.diaries) pkg.diaries = [];
               pkg.diaries.push({
                 dateKey: gCurrentDateKey,
@@ -1654,8 +1738,34 @@
 
           snapGridBox.appendChild(item);
         });
+      } else {
+        // 写真がない日は可愛い手描きスケッチカードを表示
+        diaryPhotoContainer.style.display = 'none';
+        diarySketchContainer.style.display = 'flex';
+
+        const weather = diary?.weather || '快晴';
+        const sketchIcon = isShiro
+          ? (weather === '快晴' ? '🦉☀️' : (weather === '雨' ? '🦉🌧️' : '🦉🔭'))
+          : (weather === '快晴' ? '🐾☀️' : (weather === '雨' ? '🐾☔' : '🐾🌸'));
+
+        sketchIconStamp.textContent = sketchIcon;
+        sketchTitleText.textContent = isShiro ? `🎨 本日の観測スケッチ（ホウ博士 筆）` : `🎨 クロのお絵描きスケッチ（クロ 筆）`;
+        sketchSubtitleText.textContent = isShiro
+          ? `『今日は写真の代わりにボクがスケッチを描いたホ！』`
+          : `『写真の代わりにクロが一生懸命お絵描きしたニャン♪』`;
       }
 
+      // 未作成案内の制御
+      if (!hasProperDiary && !hasPhotos) {
+        diaryEmptyView.style.display = 'flex';
+      } else if (!hasProperDiary && hasPhotos) {
+        diaryEmptyView.style.display = 'flex';
+      } else {
+        diaryEmptyView.style.display = 'none';
+      }
+      diaryEditorView.style.display = 'flex';
+
+      // 会話ログの描画
       const chatScroll = document.getElementById('chat-timeline-scroll');
       const chatTitle = document.getElementById('chat-day-title');
       const chatBadge = document.getElementById('chat-count-badge');
@@ -1713,6 +1823,53 @@
         });
       }
     }
+
+    btnSketchUpload.onclick = () => sketchPhotoInput.click();
+
+    sketchPhotoInput.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const base64 = evt.target.result;
+        const pkg = gPackageData;
+        const activeId = (pkg.characterId === 'shiro' || pkg.settings?.activeCharacter === 'shiro') ? 'shiro' : 'kuro';
+        const poolKey = activeId === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${activeId}_${gCurrentDateKey}`;
+
+        if (!pkg.dailyPhotoPools) pkg.dailyPhotoPools = {};
+        if (!pkg.dailyPhotoPools[poolKey]) pkg.dailyPhotoPools[poolKey] = [];
+
+        pkg.dailyPhotoPools[poolKey].push({
+          base64: base64,
+          comment: "アルバムで追加した写真",
+          time: "12:00",
+          timestamp: Date.now()
+        });
+
+        let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
+        if (diary) {
+          diary.photo = base64;
+        } else {
+          if (!pkg.diaries) pkg.diaries = [];
+          pkg.diaries.push({
+            dateKey: gCurrentDateKey,
+            fullDate: document.getElementById('diary-full-date-disp').textContent,
+            weather: '快晴',
+            temperature: 22,
+            content: '',
+            kuroComment: '',
+            photo: base64,
+            timestamp: Date.now()
+          });
+        }
+
+        updateSummaryPills();
+        renderCurrentSpread();
+      };
+      reader.readAsDataURL(file);
+      sketchPhotoInput.value = '';
+    };
 
     diaryTextInput.oninput = () => {
       const pkg = gPackageData;
@@ -1780,7 +1937,6 @@
       const pkg = gPackageData;
       if (!pkg) return;
 
-      // 1. 記憶帳
       memoriesContainer.innerHTML = '';
       const memories = Array.isArray(pkg.memories) ? pkg.memories : [];
       memories.forEach((mem, idx) => {
@@ -1798,7 +1954,6 @@
         memoriesContainer.appendChild(row);
       });
 
-      // 2. 音声認識辞書（言い換えエディター）
       dictItemsContainer.innerHTML = '';
       const dictList = Array.isArray(pkg.customDictionary) ? pkg.customDictionary : [
         { from: "ジムニー, ジェミニ, じぇみに", to: "Gemini" },
@@ -1822,7 +1977,6 @@
         dictItemsContainer.appendChild(row);
       });
 
-      // 3. 設定
       const s = pkg.settings || {};
       const themeLabelMap = {
         'normal': '🌸 ノーマル（サクラピンク）',
