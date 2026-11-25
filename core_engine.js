@@ -1,15 +1,17 @@
-// [稼働Ver 作業版 Rev.11] 応答オブジェクト入口正規化・自声エコー二重遮断・状態通知純化・映画名読み上げ強化・直近写真継続対話
+// [稼働Ver 作業版 Rev.12] キーファクトリ一元化・キャラクター完全独立バックアップ・安全マージ復元・partnerComment汎用併記
 /* ==========================================================================
    AIペット 共通対話基盤エンジンOS (core_engine.js)
    - プラグインアーキテクチャ対応（char_kuro.js, char_shiro.js の動的自動ロード）
    - 【キャラクター完全分離】クロちゃん🐾 ⇔ シロくん（ホウ博士）🦉 の安全動的取得
+   - 【キーファクトリ一元化】StorageManager内部で各キャラのストレージキーを純粋関数で一意生成しモグラ叩きを完全根絶
+   - 【完全独立バックアップ】現在アクティブなペットのデータのみを厳密抽出し、他キャラの写真・ログ混入を100%防止
+   - 【安全マージ復元】バックアップ読み込み時に当該キャラクターの領域のみを更新し、他キャラのデータや最新会話ログを安全保護
    - 【応答オブジェクト入口正規化】TextFormatter.normalizeResponse により、Geminiの出力を即座に { display, speech } へ確定
    - 【自声エコー完全根絶】表示用漢字テキストと読み用ひらがなテキストを二重登録し、Web Speech APIの認識ゆれを物理遮断
    - 【状態通知の純化】AudioSpeechEngineから散発的なDOM直接操作を全廃し、イベント駆動でAppCoreへ通知
    - 【映画名・固有名詞読み上げ強化】ゴジラ-0（マイナスゼロ）、ゴジラ-1.0等の表記・音声認識ゆれを100%安定発音化
    - 【直近写真継続対話エンジン】撮影後30分以内の写真キャッシュ管理、写真に関する話題（何色、どこ、これ等）のインテリジェント判定
    - 【ローカルVOICEVOX安定化】待機タイムアウトを5.5秒に設定しTailscale/PC直結の完走率最大化
-   - 【絵日記写真日付完全厳格化】写真プール取得時に日付キー（dateKey）の完全一致を強制し、過去写真の他日漏れを100%根絶
    - Gemini連携モデル完全固定（gemini-3.5-flash-lite / gemini-flash-lite-latest）
    ========================================================================== */
 
@@ -125,7 +127,7 @@ const TextFormatter = {
 };
 window.TextFormatter = TextFormatter;
 
-/* ★ アクティブキャラクターの安全動的取得（クロちゃん ⇔ シロくん） */
+/* ★ アクティブキャラクターの安全動的取得（クロちゃん ⇔ シロくん ⇔ 将来の仲間） */
 const CurrentCharacterFallback = {
   id: "kuro",
   name: "クロ",
@@ -153,7 +155,8 @@ const CurrentCharacterFallback = {
   },
   buildSystemPrompt: () => "",
   buildDiaryPrompt: () => "",
-  getVectorAvatarSvg: () => ""
+  getVectorAvatarSvg: () => "",
+  getRealAccessorySvg: () => ""
 };
 
 const getCurChar = () => {
@@ -348,6 +351,7 @@ const TimeProvider = {
     return `${parts[0]}年${parts[1]}月${parts[2]}日 (${dayNames[dt.getDay()]})`;
   },
 
+  // ★ キーファクトリと連動した安全な日付キー全走査
   getAllActiveDateKeys() {
     const dateSet = new Set();
     const cur = this.getCurrentInfo();
@@ -361,12 +365,20 @@ const TimeProvider = {
 
     const activeId = getCurChar().id;
     for (let k in localStorage) {
-      if (k.startsWith(`kuro_daily_logs_${activeId}_`) || k.startsWith('kuro_daily_logs_')) {
-        const cleanK = k.replace(`kuro_daily_logs_${activeId}_`, '').replace('kuro_daily_logs_', '');
-        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanK)) dateSet.add(cleanK);
-      } else if (k.startsWith(`kuro_daily_photos_${activeId}_`) || k.startsWith('kuro_daily_photos_')) {
-        const cleanP = k.replace(`kuro_daily_photos_${activeId}_`, '').replace('kuro_daily_photos_', '');
-        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanP)) dateSet.add(cleanP);
+      if (k.startsWith(`kuro_daily_logs_${activeId}_`)) {
+        const dateK = k.replace(`kuro_daily_logs_${activeId}_`, '');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateK)) dateSet.add(dateK);
+      } else if (k.startsWith(`kuro_daily_photos_${activeId}_`)) {
+        const dateP = k.replace(`kuro_daily_photos_${activeId}_`, '');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateP)) dateSet.add(dateP);
+      } else if (activeId === 'kuro') {
+        if (k.startsWith('kuro_daily_logs_') && !k.includes('_shiro_')) {
+          const dateK = k.replace('kuro_daily_logs_', '');
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateK)) dateSet.add(dateK);
+        } else if (k.startsWith('kuro_daily_photos_') && !k.includes('_shiro_')) {
+          const dateP = k.replace('kuro_daily_photos_', '');
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateP)) dateSet.add(dateP);
+        }
       }
     }
 
@@ -1236,7 +1248,7 @@ const LocationProvider = {
 window.LocationProvider = LocationProvider;
 
 /* ==========================================================================
-   MODULE 3: ストレージ管理 ＆ 直近写真キャッシュ ＆ カスタム辞書エンジン
+   MODULE 3: ストレージ管理 ＆ キーファクトリ ＆ 完全独立バックアップエンジン
    ========================================================================== */
 const DATA_KEYS = {
   MEMORIES: 'kuro_data_memories',
@@ -1262,10 +1274,21 @@ const StorageManager = {
   },
   defaultEyelidCoordsKuro: { y: 172, x: 0, gap: 28, size: 16, rotate: 0 },
 
-  _getCharSpecificKey(baseKey) {
-    const curId = getCurChar().id;
+  // ★【キーファクトリ一元化】レガシー互換を完全内包し、3人目・4人目も100%安全に一意キー生成
+  _getCharSpecificKey(baseKey, charId = null) {
+    const curId = charId || getCurChar().id;
     if (curId === 'kuro') return baseKey;
     return `${baseKey}_${curId}`;
+  },
+
+  _getDailyPhotosKey(charId, dateKey) {
+    const curId = charId || getCurChar().id;
+    return curId === 'kuro' ? `kuro_daily_photos_${dateKey}` : `kuro_daily_photos_${curId}_${dateKey}`;
+  },
+
+  _getDailyLogsKey(charId, dateKey) {
+    const curId = charId || getCurChar().id;
+    return curId === 'kuro' ? `kuro_daily_logs_${dateKey}` : `kuro_daily_logs_${curId}_${dateKey}`;
   },
 
   // 直近写真キャッシュ管理（30分以内の写真を見返しながら会話可能にする）
@@ -1286,7 +1309,6 @@ const StorageManager = {
       const saved = JSON.parse(localStorage.getItem(DATA_KEYS.LAST_SHARED_PHOTO));
       if (!saved || !saved.base64 || !saved.timestamp) return null;
       const now = Date.now();
-      // 30分（1800000ms）以内の写真であれば有効
       if (now - saved.timestamp <= 30 * 60 * 1000) {
         return saved;
       }
@@ -1440,7 +1462,7 @@ const StorageManager = {
     localStorage.setItem(key, JSON.stringify([]));
   },
 
-  // ★ 確定した表示テキスト（displayText）をそのまま保存（生JSONのたらい回し・破壊を根絶）
+  // ★ 確定した表示テキスト（displayText）をそのまま保存
   appendChatLog(role, text, photoUrl = null) {
     if (!text) return;
     const timeInfo = TimeProvider.getCurrentInfo();
@@ -1464,8 +1486,8 @@ const StorageManager = {
       recent.push(rEntry);
       localStorage.setItem(recentKey, JSON.stringify(recent.slice(-30)));
 
-      const activeId = getCurChar().id;
-      const dailyKey = activeId === 'kuro' ? `kuro_daily_logs_${timeInfo.lifeLogKey}` : `kuro_daily_logs_${activeId}_${timeInfo.lifeLogKey}`;
+      const curId = getCurChar().id;
+      const dailyKey = this._getDailyLogsKey(curId, timeInfo.lifeLogKey);
       const daily = JSON.parse(localStorage.getItem(dailyKey) || '[]');
       daily.push(entry);
       localStorage.setItem(dailyKey, JSON.stringify(daily.slice(-1000)));
@@ -1475,8 +1497,8 @@ const StorageManager = {
   rollbackLastExchange(includeModelReply = false) {
     try {
       const timeInfo = TimeProvider.getCurrentInfo();
-      const activeId = getCurChar().id;
-      const dailyKey = activeId === 'kuro' ? `kuro_daily_logs_${timeInfo.lifeLogKey}` : `kuro_daily_logs_${activeId}_${timeInfo.lifeLogKey}`;
+      const curId = getCurChar().id;
+      const dailyKey = this._getDailyLogsKey(curId, timeInfo.lifeLogKey);
       const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
 
       let recent = this.loadRecentTimelineLogs();
@@ -1508,18 +1530,18 @@ const StorageManager = {
     return false;
   },
 
-  getDailyLogs(lifeDateKey) {
-    const activeId = getCurChar().id;
-    const dailyKey = activeId === 'kuro' ? `kuro_daily_logs_${lifeDateKey}` : `kuro_daily_logs_${activeId}_${lifeDateKey}`;
+  getDailyLogs(lifeDateKey, charId = null) {
+    const curId = charId || getCurChar().id;
+    const dailyKey = this._getDailyLogsKey(curId, lifeDateKey);
     try { return JSON.parse(localStorage.getItem(dailyKey)) || []; } catch(e) { return []; }
   },
 
-  addPhotoToDailyPool(photoBase64, userComment = "", customDateKey = null) {
+  addPhotoToDailyPool(photoBase64, userComment = "", customDateKey = null, charId = null) {
     if (!photoBase64) return;
     const timeInfo = TimeProvider.getCurrentInfo();
     const targetDateKey = customDateKey || timeInfo.lifeLogKey;
-    const activeId = getCurChar().id;
-    const key = activeId === 'kuro' ? `kuro_daily_photos_${targetDateKey}` : `kuro_daily_photos_${activeId}_${targetDateKey}`;
+    const curId = charId || getCurChar().id;
+    const key = this._getDailyPhotosKey(curId, targetDateKey);
     try {
       let pool = JSON.parse(localStorage.getItem(key) || '[]');
       const exists = pool.some(p => p.base64 === photoBase64);
@@ -1532,40 +1554,40 @@ const StorageManager = {
           dateKey: targetDateKey
         });
         localStorage.setItem(key, JSON.stringify(pool.slice(-12)));
-        Logger.log(`[Storage] 写真プール保存完了 (${targetDateKey} / 計:${pool.length}枚)`, "info");
+        Logger.log(`[Storage] 写真プール保存完了 (${curId} / ${targetDateKey} / 計:${pool.length}枚)`, "info");
       }
       this.setLastSharedPhoto(photoBase64);
     } catch(e) {}
   },
 
-  removePhotoFromDailyPool(lifeDateKey, photoIndex) {
-    const activeId = getCurChar().id;
-    const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
+  removePhotoFromDailyPool(lifeDateKey, photoIndex, charId = null) {
+    const curId = charId || getCurChar().id;
+    const key = this._getDailyPhotosKey(curId, lifeDateKey);
     try {
       let pool = JSON.parse(localStorage.getItem(key) || '[]');
       if (photoIndex < 0 || photoIndex >= pool.length) return false;
       const del = pool.splice(photoIndex, 1)[0];
       localStorage.setItem(key, JSON.stringify(pool));
 
-      const diaries = this.loadAllDiaries();
+      const diaries = this.loadAllDiaries(curId);
       const target = diaries.find(d => d.dateKey === lifeDateKey);
       if (target && target.photo === del.base64) {
         target.photo = pool.length > 0 ? pool[0].base64 : null;
-        this.saveAllDiaries(diaries);
+        this.saveAllDiaries(diaries, curId);
       }
       return true;
     } catch(e) { return false; }
   },
 
-  getDailyPhotoPool(lifeDateKey) {
-    const activeId = getCurChar().id;
-    const key = activeId === 'kuro' ? `kuro_daily_photos_${lifeDateKey}` : `kuro_daily_photos_${activeId}_${lifeDateKey}`;
+  getDailyPhotoPool(lifeDateKey, charId = null) {
+    const curId = charId || getCurChar().id;
+    const key = this._getDailyPhotosKey(curId, lifeDateKey);
     try {
       let pool = JSON.parse(localStorage.getItem(key)) || [];
       pool = pool.filter(p => p && p.dateKey === lifeDateKey);
 
       if (pool.length === 0) {
-        const diaries = this.loadAllDiaries();
+        const diaries = this.loadAllDiaries(curId);
         const d = diaries.find(item => item.dateKey === lifeDateKey);
         if (d && d.photo) {
           pool = [{ base64: d.photo, comment: "メイン写真", time: "12:00", timestamp: d.timestamp || Date.now(), dateKey: lifeDateKey }];
@@ -1576,23 +1598,24 @@ const StorageManager = {
     } catch(e) { return []; }
   },
 
-  loadMemories(defaultMemories) {
-    const key = this._getCharSpecificKey(DATA_KEYS.MEMORIES);
+  loadMemories(defaultMemories, charId = null) {
+    const key = this._getCharSpecificKey(DATA_KEYS.MEMORIES, charId);
     try {
       const parsed = JSON.parse(localStorage.getItem(key));
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch(e) {}
-    const initList = defaultMemories || getCurChar().defaultMemories || [];
-    this.saveMemories(initList);
+    const cur = charId ? (charId === 'shiro' ? window.Character_Shiro : window.Character_Kuro) : getCurChar();
+    const initList = defaultMemories || (cur && cur.defaultMemories) || [];
+    this.saveMemories(initList, charId);
     return initList;
   },
-  saveMemories(m) {
-    const key = this._getCharSpecificKey(DATA_KEYS.MEMORIES);
+  saveMemories(m, charId = null) {
+    const key = this._getCharSpecificKey(DATA_KEYS.MEMORIES, charId);
     localStorage.setItem(key, JSON.stringify(m));
   },
 
-  loadAllDiaries() {
-    const key = this._getCharSpecificKey(DATA_KEYS.DIARIES);
+  loadAllDiaries(charId = null) {
+    const key = this._getCharSpecificKey(DATA_KEYS.DIARIES, charId);
     try {
       const list = JSON.parse(localStorage.getItem(key)) || [];
       const timeInfo = TimeProvider.getCurrentInfo();
@@ -1600,16 +1623,21 @@ const StorageManager = {
 
       return list.map(d => {
         if (d.dateKey !== todayKey) {
-          if (d.kuroComment && d.kuroComment.includes("今日もおやびんと一緒で最高に幸せな一日だった")) {
+          const comment = d.partnerComment || d.kuroComment || "";
+          if (comment.includes("今日もおやびんと一緒で最高に幸せな一日だった")) {
             d.kuroComment = "";
+            d.partnerComment = "";
           }
         }
+        // 汎用キーを相互保証
+        if (!d.partnerComment && d.kuroComment) d.partnerComment = d.kuroComment;
+        if (!d.kuroComment && d.partnerComment) d.kuroComment = d.partnerComment;
         return d;
       });
     } catch(e) { return []; }
   },
-  saveAllDiaries(list) {
-    const key = this._getCharSpecificKey(DATA_KEYS.DIARIES);
+  saveAllDiaries(list, charId = null) {
+    const key = this._getCharSpecificKey(DATA_KEYS.DIARIES, charId);
     localStorage.setItem(key, JSON.stringify(list));
   },
 
@@ -1626,22 +1654,24 @@ const StorageManager = {
     return this.isProperDiary(d);
   },
 
-  getDiary(dateKey) {
-    const list = this.loadAllDiaries();
+  getDiary(dateKey, charId = null) {
+    const list = this.loadAllDiaries(charId);
     return list.find(d => d.dateKey === dateKey) || null;
   },
 
-  saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, kuroComment = null) {
+  // ★ partnerComment 汎用キーと kuroComment の完全並行保存
+  saveDiary(entryText, customDateKey = null, customFullDate = null, photoData = null, currentLogCount = null, commentText = null, charId = null) {
     if (!entryText || entryText.length < 15) return false;
     const timeInfo = TimeProvider.getCurrentInfo();
     const dateKey = customDateKey || timeInfo.lifeLogKey;
     const fullDate = customFullDate || (customDateKey ? TimeProvider.formatDateKeyToFull(customDateKey) : timeInfo.lifeFullDate);
+    const cur = charId ? (charId === 'shiro' ? window.Character_Shiro : window.Character_Kuro) : getCurChar();
 
     let cleanContent = entryText.replace(/https?:\/\/[^\s]+/gi, '');
-    cleanContent = getCurChar().cleanEnding ? getCurChar().cleanEnding(cleanContent) : cleanContent;
+    cleanContent = cur.cleanEnding ? cur.cleanEnding(cleanContent) : cleanContent;
     cleanContent = TextFormatter.formatDisplayText(cleanContent);
 
-    let extractedComment = kuroComment;
+    let extractedComment = commentText;
     const match = cleanContent.match(/(?:【?(?:クロ|ホウ博士|シロ)の(?:ひとこと|一言|メッセージ)[:：]?】?|🐾\s*クロのひとこと[:：]?|クロのひとこと[:：]?|ホウ博士のひとこと[:：]?|🦉\s*ホウ博士のひとこと[:：]?)\s*([^\n]+)/);
     if (match) {
       if (!extractedComment) extractedComment = match[1].trim();
@@ -1657,25 +1687,28 @@ const StorageManager = {
 
     const finalizedContent = unifiedHeader + cleanContent;
 
-    let list = this.loadAllDiaries();
+    let list = this.loadAllDiaries(cur.id);
     const idx = list.findIndex(d => d.dateKey === dateKey);
 
     if (idx >= 0 && !extractedComment) {
-      extractedComment = list[idx].kuroComment || "";
+      extractedComment = list[idx].partnerComment || list[idx].kuroComment || "";
     }
 
-    const recordedLogCount = (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey).length;
+    const recordedLogCount = (currentLogCount !== null) ? currentLogCount : this.getDailyLogs(dateKey, cur.id).length;
 
     let targetPhoto = photoData || (idx >= 0 ? list[idx].photo : null) || null;
     if (targetPhoto) {
-      this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真", dateKey);
+      this.addPhotoToDailyPool(targetPhoto, "絵日記メイン写真", dateKey, cur.id);
     }
+
+    const formattedComment = extractedComment ? TextFormatter.formatDisplayText(extractedComment) : "";
 
     const diaryData = {
       dateKey, fullDate,
       weather: weatherStr, temperature: LocationProvider.temperature,
       content: finalizedContent,
-      kuroComment: extractedComment ? TextFormatter.formatDisplayText(extractedComment) : "",
+      kuroComment: formattedComment,
+      partnerComment: formattedComment,
       photo: targetPhoto,
       timestamp: Date.now(),
       logCountAtSave: recordedLogCount
@@ -1686,25 +1719,26 @@ const StorageManager = {
     } else {
       list.unshift(diaryData);
     }
-    this.saveAllDiaries(list);
-    Logger.log(`[Diary] 📖 絵日記保存完了: ${fullDate} (ログ数:${recordedLogCount})`, "success");
+    this.saveAllDiaries(list, cur.id);
+    Logger.log(`[Diary] 📖 絵日記保存完了: ${fullDate} (${cur.id} / ログ数:${recordedLogCount})`, "success");
     return true;
   },
 
   attachPhotoToTodayDiary(photoBase64) {
     const timeInfo = TimeProvider.getCurrentInfo();
-    this.addPhotoToDailyPool(photoBase64, "写真を見せた記録", timeInfo.lifeLogKey);
-    let list = this.loadAllDiaries();
+    const cur = getCurChar();
+    this.addPhotoToDailyPool(photoBase64, "写真を見せた記録", timeInfo.lifeLogKey, cur.id);
+    let list = this.loadAllDiaries(cur.id);
     const idx = list.findIndex(d => d.dateKey === timeInfo.lifeLogKey);
-    const defTxt = getCurChar().id === 'shiro'
+    const defTxt = cur.id === 'shiro'
       ? "今日は助手と写真を見せ合って楽しい時間を過ごしたホ！"
       : "今日はおやびんと写真を見せ合って楽しかったニャン♪";
 
     if (idx >= 0) {
       list[idx].photo = photoBase64;
-      this.saveAllDiaries(list);
+      this.saveAllDiaries(list, cur.id);
     } else {
-      this.saveDiary(defTxt, timeInfo.lifeLogKey, timeInfo.lifeFullDate, photoBase64, 1);
+      this.saveDiary(defTxt, timeInfo.lifeLogKey, timeInfo.lifeFullDate, photoBase64, 1, null, cur.id);
     }
   },
 
@@ -1780,20 +1814,26 @@ const StorageManager = {
       }
     }
 
-    const diaries = this.loadAllDiaries();
-    for (let d of diaries) {
-      if (d && d.photo) {
-        if (photoMapping.has(d.photo)) {
-          d.photo = photoMapping.get(d.photo);
-        } else {
-          const slim = await compressToThumbnail(d.photo);
-          photoMapping.set(d.photo, slim);
-          d.photo = slim;
-          processedPhotos++;
+    const cur = getCurChar();
+    ['kuro', 'shiro'].forEach(cId => {
+      const diaries = this.loadAllDiaries(cId);
+      let updated = false;
+      for (let d of diaries) {
+        if (d && d.photo) {
+          if (photoMapping.has(d.photo)) {
+            d.photo = photoMapping.get(d.photo);
+            updated = true;
+          } else {
+            // mapにない場合でも圧縮を試みる
+            compressToThumbnail(d.photo).then(slim => {
+              d.photo = slim;
+              this.saveAllDiaries(diaries, cId);
+            });
+          }
         }
       }
-    }
-    this.saveAllDiaries(diaries);
+      if (updated) this.saveAllDiaries(diaries, cId);
+    });
 
     for (let k in localStorage) {
       if (!localStorage.hasOwnProperty(k)) continue;
@@ -1815,58 +1855,99 @@ const StorageManager = {
     return true;
   },
 
+  // ★【完全独立写真バックアップ】当該キャラクターの写真プールのみを100%厳密抽出
   downloadPhotoArchivePackage() {
+    const cur = getCurChar();
+    const curId = cur.id;
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
-    const allDailyPhotos = {};
+
+    const charDailyPhotos = {};
     for (let k in localStorage) {
-      if (k.startsWith('kuro_daily_photos_')) try { allDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
+      if (curId === 'kuro') {
+        if (k.startsWith('kuro_daily_photos_') && !k.includes('_shiro_')) {
+          try { charDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
+        }
+      } else {
+        if (k.startsWith(`kuro_daily_photos_${curId}_`)) {
+          try { charDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
+        }
+      }
     }
+
     const pkg = {
-      format: "kuro_photo_archive_v1",
-      characterId: getCurChar().id,
+      format: "kuro_photo_archive_v2",
+      characterId: curId,
+      characterName: cur.name,
+      characterTitle: cur.title,
+      ownerCall: cur.ownerCall,
       exportedAt: now.toLocaleString('ja-JP'),
-      dailyPhotoPools: allDailyPhotos,
-      diaries: this.loadAllDiaries(),
+      dailyPhotoPools: charDailyPhotos,
+      diaries: this.loadAllDiaries(curId),
       customDictionary: this.loadCustomDictionary()
     };
     const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AIペット_${getCurChar().name}_高画質写真アルバム_${ymd}.json`;
+    a.download = `AIペット_${cur.name}_高画質写真アルバム_${ymd}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    Logger.log(`[Backup] 📷 高画質写真アルバム原本の書き出し完了（日記本文・辞書完全保持）`, "success");
+    Logger.log(`[Backup] 📷 ${cur.name}専用 高画質写真アルバム原本の書き出し完了（完全独立）`, "success");
   },
 
+  // ★【完全独立フルバックアップ】当該キャラクターの写真・ログ・日記・記憶のみを100%厳密抽出
   downloadDataPackage() {
+    const cur = getCurChar();
+    const curId = cur.id;
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
-    const allDailyPhotos = {}, allDailyLogs = {};
+
+    const charDailyPhotos = {};
+    const charDailyLogs = {};
+
     for (let k in localStorage) {
-      if (k.startsWith('kuro_daily_photos_')) try { allDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
-      if (k.startsWith('kuro_daily_logs_')) try { allDailyLogs[k] = JSON.parse(localStorage[k]); } catch(e) {}
+      if (curId === 'kuro') {
+        if (k.startsWith('kuro_daily_photos_') && !k.includes('_shiro_')) {
+          try { charDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
+        }
+        if (k.startsWith('kuro_daily_logs_') && !k.includes('_shiro_')) {
+          try { charDailyLogs[k] = JSON.parse(localStorage[k]); } catch(e) {}
+        }
+      } else {
+        if (k.startsWith(`kuro_daily_photos_${curId}_`)) {
+          try { charDailyPhotos[k] = JSON.parse(localStorage[k]); } catch(e) {}
+        }
+        if (k.startsWith(`kuro_daily_logs_${curId}_`)) {
+          try { charDailyLogs[k] = JSON.parse(localStorage[k]); } catch(e) {}
+        }
+      }
     }
+
+    const curVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.4.2";
+
     const pkg = {
-      format: "kuro_pure_data_package_v2",
-      characterId: getCurChar().id,
-      version: (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.4.0",
+      format: "kuro_pure_data_package_v3",
+      characterId: curId,
+      characterName: cur.name,
+      characterTitle: cur.title,
+      ownerCall: cur.ownerCall,
+      version: curVer,
       exportedAt: now.toLocaleString('ja-JP'),
-      memories: this.loadMemories([]),
-      diaries: this.loadAllDiaries(),
+      memories: this.loadMemories([], curId),
+      diaries: this.loadAllDiaries(curId),
       recentLogs: this.loadRecentTimelineLogs(),
-      dailyPhotoPools: allDailyPhotos,
-      dailyChatLogs: allDailyLogs,
+      dailyPhotoPools: charDailyPhotos,
+      dailyChatLogs: charDailyLogs,
       customDictionary: this.loadCustomDictionary(),
       settings: {
-        activeCharacter: localStorage.getItem('kuro_active_character') || 'kuro',
-        speakerId: localStorage.getItem('kuro_voice_speaker_id') || String(getCurChar().defaultSpeakerId || 10),
-        voiceRate: localStorage.getItem('kuro_rate') || String(getCurChar().defaultVoiceRate || 1.05),
+        activeCharacter: curId,
+        speakerId: localStorage.getItem(`kuro_voice_speaker_id_${curId}`) || localStorage.getItem('kuro_voice_speaker_id') || String(cur.defaultSpeakerId || 10),
+        voiceRate: localStorage.getItem('kuro_rate') || String(cur.defaultVoiceRate || 1.05),
         talkLength: localStorage.getItem('kuro_talk_length') || 'auto',
         buttonFeedback: localStorage.getItem('kuro_button_feedback') || 'voice',
         timerSound: localStorage.getItem('kuro_timer_sound') || 'bell',
@@ -1883,18 +1964,30 @@ const StorageManager = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AIペット_${getCurChar().name}_完全バックアップ_${ymd}.json`;
+    a.download = `AIペット_${cur.name}_完全バックアップ_${ymd}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    Logger.log(`[Backup] データ書き出し完了`, "success");
+    Logger.log(`[Backup] ✅ ${cur.name}専用 完全独立データ書き出し完了（他キャラ混入ゼロ）`, "success");
   },
 
+  // ★【安全マージ復元＆キャラクター照合ガード】他キャラのデータを巻き込まず安全合流
   async importAndReplaceDataPackage(data) {
     if (!data || typeof data !== 'object') throw new Error("無効なバックアップデータです。");
 
-    if (Array.isArray(data.memories)) this.saveMemories(data.memories);
+    const targetCharId = data.characterId || (data.settings && data.settings.activeCharacter) || 'kuro';
+    const curActiveId = getCurChar().id;
+
+    if (targetCharId !== curActiveId) {
+      const confirmSwitch = window.confirm(`読み込んだデータは【${data.characterName || targetCharId}】のバックアップです。\nパートナーを切り替えて安全に復元しますか？`);
+      if (!confirmSwitch) return false;
+      localStorage.setItem('kuro_active_character', targetCharId);
+    }
+
+    if (Array.isArray(data.memories)) {
+      this.saveMemories(data.memories, targetCharId);
+    }
 
     if (Array.isArray(data.customDictionary)) {
       this.saveCustomDictionary(data.customDictionary);
@@ -1907,20 +2000,24 @@ const StorageManager = {
           const t = d.temperature !== undefined ? `${d.temperature}℃` : "10℃";
           d.content = `【${d.fullDate || d.dateKey} 天気:${w} 気温:${t}】\n\n` + d.content.replace(/^【[^】]+】\s*\n*/u, '').trim();
         }
+        if (!d.partnerComment && d.kuroComment) d.partnerComment = d.kuroComment;
+        if (!d.kuroComment && d.partnerComment) d.kuroComment = d.partnerComment;
         return d;
       });
-      this.saveAllDiaries(sanitizedDiaries);
+      this.saveAllDiaries(sanitizedDiaries, targetCharId);
     }
 
     if (Array.isArray(data.recentLogs)) {
-      const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS);
+      const recentKey = this._getCharSpecificKey(DATA_KEYS.RECENT_LOGS, targetCharId);
       localStorage.setItem(recentKey, JSON.stringify(data.recentLogs.slice(-30)));
     }
 
     if (data.settings && typeof data.settings === 'object') {
       const s = data.settings;
-      if (s.activeCharacter) localStorage.setItem('kuro_active_character', s.activeCharacter);
-      if (s.speakerId) localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
+      if (s.speakerId) {
+        localStorage.setItem(`kuro_voice_speaker_id_${targetCharId}`, s.speakerId);
+        localStorage.setItem('kuro_voice_speaker_id', s.speakerId);
+      }
       if (s.voiceRate) localStorage.setItem('kuro_rate', s.voiceRate);
       if (s.talkLength) localStorage.setItem('kuro_talk_length', s.talkLength);
       if (s.buttonFeedback) localStorage.setItem('kuro_button_feedback', s.buttonFeedback);
@@ -1937,16 +2034,42 @@ const StorageManager = {
       if (s.eyelidCoords) this.saveEyelidCoords(s.eyelidCoords);
     }
 
+    // ★ 会話ログと写真プールは安全マージ（スマホ側の最新会話を壊さない）
     if (data.dailyChatLogs) {
       for (let k in data.dailyChatLogs) {
-        try { localStorage.setItem(k, JSON.stringify(data.dailyChatLogs[k])); } catch(e) {}
+        if (!k.includes(`_${targetCharId}_`) && targetCharId !== 'kuro') continue;
+        if (targetCharId === 'kuro' && k.includes('_shiro_')) continue;
+
+        try {
+          const importLogs = data.dailyChatLogs[k] || [];
+          const existingLogs = JSON.parse(localStorage.getItem(k) || '[]');
+          const mergedLogs = [...existingLogs];
+          importLogs.forEach(iLog => {
+            if (!mergedLogs.some(eLog => eLog.timestamp && eLog.timestamp === iLog.timestamp && eLog.text === iLog.text)) {
+              mergedLogs.push(iLog);
+            }
+          });
+          mergedLogs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+          localStorage.setItem(k, JSON.stringify(mergedLogs.slice(-1000)));
+        } catch(e) {}
       }
     }
 
     if (data.dailyPhotoPools) {
       for (let k in data.dailyPhotoPools) {
+        if (!k.includes(`_${targetCharId}_`) && targetCharId !== 'kuro') continue;
+        if (targetCharId === 'kuro' && k.includes('_shiro_')) continue;
+
         try {
-          localStorage.setItem(k, JSON.stringify(data.dailyPhotoPools[k]));
+          const importPhotos = data.dailyPhotoPools[k] || [];
+          const existingPhotos = JSON.parse(localStorage.getItem(k) || '[]');
+          const mergedPhotos = [...existingPhotos];
+          importPhotos.forEach(iP => {
+            if (!mergedPhotos.some(eP => eP.base64 === iP.base64)) {
+              mergedPhotos.push(iP);
+            }
+          });
+          localStorage.setItem(k, JSON.stringify(mergedPhotos.slice(-12)));
         } catch(quotaErr) {
           try {
             Logger.log(`[Import] ⚠️ 写真容量超過を検知。安全サムネイル制限を適用します`, "warn");
@@ -1956,7 +2079,8 @@ const StorageManager = {
         }
       }
     }
-    Logger.log(`[Backup] データ読み込み＆安全復元完了`, "success");
+
+    Logger.log(`[Backup] ✅ ${targetCharId} のデータ読み込み＆安全合流完了`, "success");
     return true;
   }
 };
