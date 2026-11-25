@@ -1,10 +1,10 @@
-<!-- [作業版 Rev.2] 写真なし日手描きスケッチカード完全同期・原本JSON高画質保護・動的音声認識辞書エディター -->
+<!-- [作業版 Rev.3] マルチキャラクター動的対応・partnerComment双方向エディット・原本JSON高画質保護・写真なし日手描きスケッチカード完全同期 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>クロちゃんの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾 v1.4.0</title>
+  <title>AIペットの思い出アルバム ＆ バックアップ ビューワー＆エディター🐾🦉 v1.4.2</title>
 
   <style>
     :root {
@@ -994,9 +994,9 @@
 
   <header>
     <div class="header-logo">
-      <span>📖</span>
-      <span>クロちゃんの思い出アルバム ＆ バックアップ エディター</span>
-      <span class="badge" id="header-pkg-version">v1.4.0 対応</span>
+      <span id="header-logo-icon">🐾</span>
+      <span id="header-logo-title">クロちゃんの思い出アルバム ＆ バックアップ エディター</span>
+      <span class="badge" id="header-pkg-version">v1.4.2 対応</span>
     </div>
 
     <div class="header-actions">
@@ -1011,8 +1011,8 @@
 
   <div id="dropzone-container">
     <div class="dropzone-card" id="dropzone-card">
-      <div class="dropzone-icon">🐾📁</div>
-      <div class="dropzone-title">クロちゃんのバックアップファイル（JSON）をここにドロップ</div>
+      <div class="dropzone-icon">🐾🦉📁</div>
+      <div class="dropzone-title">AIペットのバックアップファイル（JSON）をここにドロップ</div>
       <div class="dropzone-desc">
         スマホの設定画面で「📁 ファイル保存」したバックアップファイル（.json）、または<br>
         「🧹 写真ストレージ安全お掃除」で保存した写真原本JSONを<br>
@@ -1031,6 +1031,7 @@
       </div>
 
       <div class="data-summary-pills">
+        <span class="summary-pill" id="pill-summary-partner">相棒: <b>クロちゃん🐾</b></span>
         <span class="summary-pill" id="pill-summary-diary">絵日記: <b>0日分</b></span>
         <span class="summary-pill" id="pill-summary-photos">写真プール: <b>0枚</b></span>
         <span class="summary-pill" id="pill-summary-chats">総会話ログ: <b>0件</b></span>
@@ -1053,8 +1054,8 @@
         </div>
 
         <div class="diary-empty-card" id="diary-empty-view" style="display:none;">
-          <div class="diary-empty-icon">🐾📖</div>
-          <div class="diary-empty-title">この日はまだ絵日記が書かれていませんニャ🐾</div>
+          <div class="diary-empty-icon" id="diary-empty-icon">🐾📖</div>
+          <div class="diary-empty-title" id="diary-empty-title">この日はまだ絵日記が書かれていませんニャ🐾</div>
           <div class="diary-empty-desc">
             右ページで会話ログを振り返ったり、下の入力欄でPCから直接日記を推敲してスマホに戻せますニャン♪
           </div>
@@ -1126,7 +1127,7 @@
       <div class="modal-header-row">
         <div class="modal-header-title">
           <span>📌</span>
-          <span>記憶帳 ＆ 音声辞書 ＆ システム設定</span>
+          <span id="mem-modal-title">記憶帳 ＆ 音声辞書 ＆ システム設定</span>
         </div>
         <button type="button" class="btn-action-top" id="btn-close-mem-settings">✕ 閉じる</button>
       </div>
@@ -1140,18 +1141,18 @@
 
       <div class="mem-tab-pane active" id="tab-memories">
         <div style="font-size:12px; color:#475569; line-height:1.5;">
-          一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の「💾 記憶の変更を保存するニャ！」を押してくださいニャン🐾
+          一生忘れない大切な記憶です。テキストを直接打ち替えて、最後に下の保存ボタンを押してください。
         </div>
         <div id="memories-container" style="display:flex; flex-direction:column; gap:7px; max-height:280px; overflow-y:auto; padding:2px;"></div>
         
         <div style="display:flex; gap:6px; margin-top:4px;">
-          <input type="text" id="new-mem-input" placeholder="新しい記憶を追加（例: 大好物はちゅ〜るのまぐろ味）" style="flex:1; padding:7px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
+          <input type="text" id="new-mem-input" placeholder="新しい記憶を追加（例: 趣味はドライブ）" style="flex:1; padding:7px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; outline:none;">
           <button type="button" class="btn-action-top primary" id="btn-add-memory" style="padding:6px 14px;">＋ 行を追加</button>
         </div>
 
         <button type="button" class="btn-save-memories-main" id="btn-save-memories">
           <span>💾</span>
-          <span>記憶の変更を保存するニャ！</span>
+          <span id="btn-save-memories-text">記憶の変更を保存するニャ！</span>
         </button>
       </div>
 
@@ -1210,7 +1211,7 @@
       </div>
 
       <div style="font-size:12.5px; line-height:1.6; color:#475569;">
-        本ツールは、スマホのクロちゃん（またはシロくん）が保存したバックアップデータを、PCの大画面で**「見る（ビューワー）」**そして**「直す（エディター）」**ための専用環境ですニャン🐾
+        本ツールは、スマホのAIペット（クロちゃん・シロくん・将来の仲間たち）が保存したバックアップデータを、PCの大画面で**「見る（ビューワー）」**そして**「直す（エディター）」**ための専用環境ですニャン🐾
       </div>
 
       <div class="guide-section-box save">
@@ -1226,7 +1227,7 @@
           3. <b>スマホから後日バックアップを読み込んでも安心（高画質保護）</b>:<br>
              後日、スマホで軽量化されたデータ（3〜5KB）をPCビューワーに読み込ませても、<b>PC側の高画質写真は自動保護され、絶対に荒い写真で上書きされません</b>。<br><br>
           4. <b>PCで日記や音声辞書を直してスマホに戻す</b>:<br>
-             PCで日記や記憶、音声言い換え辞書を推敲したら「💾 スマホに戻す保存」を押し、スマホの設定で「📁 ファイル読込」を行えば、<b>スマホでおしゃべりした最新の会話ログを一切消さずに、日記と記憶・辞書だけが安全に更新</b>されます！
+             PCで日記や記憶、音声言い換え辞書を推敲したら「💾 スマホに戻す保存」を押し、スマホの設定で「📁 ファイル読込」を行えば、<b>スマホでおしゃべりした最新の会話ログを一切消さずに、日記と記憶・辞書だけが安全に合流更新</b>されます！
         </div>
       </div>
 
@@ -1243,7 +1244,7 @@
       <div class="guide-section-box edit">
         <div class="guide-sec-title">② 日記や記憶・音声辞書を直す（エディター機能）</div>
         <div class="guide-sec-body">
-          ・<b>【絵日記の推敲】</b>: メイン画面の左ページで、過去の日記本文やクロのひとことを直接キーボードで手直しできます。スナップ写真一覧の「✕」を押すと不要な写真を1枚ずつ整理できます。<br>
+          ・<b>【絵日記の推敲】</b>: メイン画面の左ページで、過去の日記本文や相棒のひとことを直接キーボードで手直しできます。スナップ写真一覧の「✕」を押すと不要な写真を1枚ずつ整理できます。<br>
           ・<b>【記憶帳 ＆ 音声辞書】</b>: 右上の「📌 記憶帳・設定」を開くと、パートナーとの大切な記憶や、マイクの誤変換言い換え辞書をじっくり編集・更新できます。
         </div>
       </div>
@@ -1282,7 +1283,7 @@
   <script src="version.js"></script>
   <script>
     /* ==========================================================================
-       バックアップデータ解析・エディター＆高画質保護エンジン (v1.4.0)
+       バックアップデータ解析・エディター＆高画質保護エンジン (v1.4.2)
        ========================================================================== */
     let gPackageData = null;
     let gSortedDateKeys = [];
@@ -1446,6 +1447,17 @@
       return newPkg;
     }
 
+    // ★【動的キャラクター情報抽出】2者択一を完全撤廃し、メタ情報から動的解決
+    function getPackageCharacterMeta(pkg) {
+      const cId = pkg.characterId || pkg.settings?.activeCharacter || 'kuro';
+      const cName = pkg.characterName || (cId === 'shiro' ? 'シロ' : (cId === 'kuro' ? 'クロ' : cId));
+      const cTitle = pkg.characterTitle || (cId === 'shiro' ? 'ホウ博士' : (cId === 'kuro' ? 'クロちゃん' : cName));
+      const ownerCall = pkg.ownerCall || (cId === 'shiro' ? '助手' : 'おやびん');
+      const icon = (cId === 'shiro') ? '🦉' : ((cId === 'kuro') ? '🐾' : '✨');
+
+      return { id: cId, name: cName, title: cTitle, ownerCall, icon };
+    }
+
     function loadBackupPackage(pkg, filename) {
       if (!pkg || typeof pkg !== 'object') {
         alert("有効なバックアップファイルではありませんニャ。");
@@ -1464,8 +1476,9 @@
 
       if (Array.isArray(pkg.diaries)) {
         pkg.diaries = pkg.diaries.map(d => {
-          let comment = d.kuroComment || "";
+          let comment = d.partnerComment || d.kuroComment || "";
           if (comment.includes("今日もおやびんと一緒で最高に幸せな一日だった")) comment = "";
+          d.partnerComment = comment;
           d.kuroComment = comment;
           return d;
         });
@@ -1477,13 +1490,13 @@
       }
       if (pkg.dailyPhotoPools) {
         Object.keys(pkg.dailyPhotoPools).forEach(k => {
-          const cleanK = k.replace(/^kuro_daily_photos_(?:[a-z]+_)?/, '');
+          const cleanK = k.replace(/^kuro_daily_photos_(?:[a-z0-9]+_)?/, '');
           if (/^\d{4}-\d{2}-\d{2}$/.test(cleanK)) dateSet.add(cleanK);
         });
       }
       if (pkg.dailyChatLogs) {
         Object.keys(pkg.dailyChatLogs).forEach(k => {
-          const cleanK = k.replace(/^kuro_daily_logs_(?:[a-z]+_)?/, '');
+          const cleanK = k.replace(/^kuro_daily_logs_(?:[a-z0-9]+_)?/, '');
           if (/^\d{4}-\d{2}-\d{2}$/.test(cleanK)) dateSet.add(cleanK);
         });
       }
@@ -1491,11 +1504,13 @@
       gSortedDateKeys = Array.from(dateSet).sort().reverse();
       if (gSortedDateKeys.length === 0) gSortedDateKeys.push(todayKey);
 
+      const meta = getPackageCharacterMeta(pkg);
+
       let initialKey = gSortedDateKeys[0];
       const hasContentOrPhoto = (k) => {
         const d = (pkg.diaries || []).find(item => item.dateKey === k);
         if (isProperDiaryItem(d)) return true;
-        const pool = pkg.dailyPhotoPools ? (pkg.dailyPhotoPools[`kuro_daily_photos_${k}`] || pkg.dailyPhotoPools[`kuro_daily_photos_shiro_${k}`]) : null;
+        const pool = pkg.dailyPhotoPools ? (pkg.dailyPhotoPools[`kuro_daily_photos_${meta.id}_${k}`] || pkg.dailyPhotoPools[`kuro_daily_photos_${k}`]) : null;
         return (pool && pool.length > 0) || (d && !!d.photo);
       };
 
@@ -1509,9 +1524,13 @@
       btnOpenMemSettings.style.display = 'flex';
       btnOpenGuide.style.display = 'flex';
 
-      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.4.0";
+      const currentVer = (typeof VersionManager !== 'undefined') ? VersionManager.current : "v1.4.2";
       const verTag = document.getElementById('header-pkg-version');
       if (verTag) verTag.textContent = `${currentVer} （${pkg.exportedAt || 'バックアップ'}）`;
+
+      // ヘッダータイトルの動的更新
+      document.getElementById('header-logo-icon').textContent = meta.icon;
+      document.getElementById('header-logo-title').textContent = `${meta.title}の思い出アルバム ＆ バックアップ エディター`;
 
       updateSummaryPills();
       buildDateDropdown();
@@ -1521,6 +1540,7 @@
 
     function updateSummaryPills() {
       const pkg = gPackageData;
+      const meta = getPackageCharacterMeta(pkg);
       const diaryCount = Array.isArray(pkg.diaries) ? pkg.diaries.length : 0;
 
       let photoCount = 0;
@@ -1552,6 +1572,7 @@
 
       const totalKB = calcTotalPackageKB(pkg);
 
+      document.getElementById('pill-summary-partner').innerHTML = `相棒: <b>${meta.title} ${meta.icon}</b>`;
       document.getElementById('pill-summary-diary').innerHTML = `絵日記: <b>${diaryCount}日分</b>`;
       document.getElementById('pill-summary-photos').innerHTML = `写真プール: <b>${photoCount}枚 (${formatKBDisplay(totalPhotoKB)})</b>`;
       document.getElementById('pill-summary-chats').innerHTML = `総会話ログ: <b>${chatCount}件</b>`;
@@ -1560,13 +1581,16 @@
 
     function buildDateDropdown() {
       dateDropdown.innerHTML = '';
+      const meta = getPackageCharacterMeta(gPackageData);
+
       gSortedDateKeys.forEach((key, idx) => {
         const opt = document.createElement('option');
         opt.value = key;
 
         const diary = (gPackageData.diaries || []).find(d => d.dateKey === key);
         const hasDiary = isProperDiaryItem(diary);
-        const pool = gPackageData.dailyPhotoPools ? (gPackageData.dailyPhotoPools[`kuro_daily_photos_${key}`] || gPackageData.dailyPhotoPools[`kuro_daily_photos_shiro_${key}`]) : null;
+        const poolKey = meta.id === 'kuro' ? `kuro_daily_photos_${key}` : `kuro_daily_photos_${meta.id}_${key}`;
+        const pool = gPackageData.dailyPhotoPools ? (gPackageData.dailyPhotoPools[poolKey] || gPackageData.dailyPhotoPools[`kuro_daily_photos_${key}`]) : null;
         const hasPhotos = (pool && pool.length > 0) || (diary && !!diary.photo);
         const fullDate = diary?.fullDate || key;
 
@@ -1603,13 +1627,15 @@
       };
     }
 
-    // ★ 写真なし日の手描きスケッチカード表示を完全同期
+    // ★【動的マルチキャラクター対応】スケッチカード・コメントラベルを動的レンダリング
     function renderCurrentSpread() {
       const curIdx = gSortedDateKeys.indexOf(gCurrentDateKey);
       btnPrevDay.disabled = (curIdx >= gSortedDateKeys.length - 1);
       btnNextDay.disabled = (curIdx <= 0);
 
       const pkg = gPackageData;
+      const meta = getPackageCharacterMeta(pkg);
+
       let diary = (pkg.diaries || []).find(d => d.dateKey === gCurrentDateKey);
       const hasProperDiary = isProperDiaryItem(diary);
 
@@ -1621,23 +1647,20 @@
       const duoRightHeaderText = document.getElementById('duo-right-header-text');
       const snapGridBox = document.getElementById('snap-grid-box');
 
-      const isShiro = (pkg.characterId === 'shiro' || pkg.settings?.activeCharacter === 'shiro');
-
       dateDisp.textContent = diary?.fullDate || `${gCurrentDateKey}`;
       weatherDisp.textContent = `🌤️ ${diary?.weather || '快晴'}`;
       tempDisp.textContent = `🌡️ ${diary?.temperature || '22'}℃`;
 
       diaryTextInput.value = diary?.content || "";
       diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
-      diaryCommentInput.value = diary?.kuroComment || "";
+      diaryCommentInput.value = diary?.partnerComment || diary?.kuroComment || "";
 
       const commentLabel = document.getElementById('diary-comment-label');
       if (commentLabel) {
-        commentLabel.textContent = isShiro ? '🦉 ホウ博士のひとこと:' : '🐾 クロのひとこと:';
+        commentLabel.textContent = `${meta.icon} ${meta.title}のひとこと:`;
       }
 
-      const activeId = isShiro ? 'shiro' : 'kuro';
-      const poolKey = activeId === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${activeId}_${gCurrentDateKey}`;
+      const poolKey = meta.id === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${meta.id}_${gCurrentDateKey}`;
       if (!pkg.dailyPhotoPools) pkg.dailyPhotoPools = {};
       if (!pkg.dailyPhotoPools[poolKey] && pkg.dailyPhotoPools[`kuro_daily_photos_${gCurrentDateKey}`]) {
         pkg.dailyPhotoPools[poolKey] = pkg.dailyPhotoPools[`kuro_daily_photos_${gCurrentDateKey}`];
@@ -1715,6 +1738,7 @@
                 weather: '快晴',
                 temperature: 22,
                 content: '',
+                partnerComment: '',
                 kuroComment: '',
                 photo: p.base64,
                 timestamp: Date.now()
@@ -1744,22 +1768,25 @@
         diarySketchContainer.style.display = 'flex';
 
         const weather = diary?.weather || '快晴';
-        const sketchIcon = isShiro
+        const sketchIcon = (meta.id === 'shiro')
           ? (weather === '快晴' ? '🦉☀️' : (weather === '雨' ? '🦉🌧️' : '🦉🔭'))
           : (weather === '快晴' ? '🐾☀️' : (weather === '雨' ? '🐾☔' : '🐾🌸'));
 
         sketchIconStamp.textContent = sketchIcon;
-        sketchTitleText.textContent = isShiro ? `🎨 本日の観測スケッチ（ホウ博士 筆）` : `🎨 クロのお絵描きスケッチ（クロ 筆）`;
-        sketchSubtitleText.textContent = isShiro
+        sketchTitleText.textContent = (meta.id === 'shiro')
+          ? `🎨 本日の観測スケッチ（${meta.title} 筆）`
+          : `🎨 ${meta.name}のお絵描きスケッチ（${meta.name} 筆）`;
+
+        sketchSubtitleText.textContent = (meta.id === 'shiro')
           ? `『今日は写真の代わりにボクがスケッチを描いたホ！』`
-          : `『写真の代わりにクロが一生懸命お絵描きしたニャン♪』`;
+          : `『写真の代わりに${meta.name}が一生懸命お絵描きしたニャン♪』`;
       }
 
       // 未作成案内の制御
-      if (!hasProperDiary && !hasPhotos) {
+      if (!hasProperDiary) {
         diaryEmptyView.style.display = 'flex';
-      } else if (!hasProperDiary && hasPhotos) {
-        diaryEmptyView.style.display = 'flex';
+        document.getElementById('diary-empty-icon').textContent = `${meta.icon}📖`;
+        document.getElementById('diary-empty-title').textContent = `この日はまだ${meta.title}の記録が書かれていません`;
       } else {
         diaryEmptyView.style.display = 'none';
       }
@@ -1771,7 +1798,7 @@
       const chatBadge = document.getElementById('chat-count-badge');
       chatScroll.innerHTML = '';
 
-      const chatKey = activeId === 'kuro' ? `kuro_daily_logs_${gCurrentDateKey}` : `kuro_daily_logs_${activeId}_${gCurrentDateKey}`;
+      const chatKey = meta.id === 'kuro' ? `kuro_daily_logs_${gCurrentDateKey}` : `kuro_daily_logs_${meta.id}_${gCurrentDateKey}`;
       let logs = (pkg.dailyChatLogs && pkg.dailyChatLogs[chatKey]) ? pkg.dailyChatLogs[chatKey] : [];
       if (logs.length === 0 && pkg.dailyChatLogs && pkg.dailyChatLogs[`kuro_daily_logs_${gCurrentDateKey}`]) {
         logs = pkg.dailyChatLogs[`kuro_daily_logs_${gCurrentDateKey}`];
@@ -1787,7 +1814,7 @@
       if (logs.length === 0) {
         chatScroll.innerHTML = `
           <div style="text-align:center;color:#94a3b8;padding:40px 10px;font-size:13px;font-weight:700;">
-            🐾 この日の保存された会話ログはありませんニャ
+            ${meta.icon} この日の保存された会話ログはありません
           </div>
         `;
       } else {
@@ -1797,8 +1824,8 @@
 
           const timeSpan = document.createElement('span');
           timeSpan.className = 'chat-meta-time';
-          const partnerName = activeId === 'shiro' ? 'ホウ博士🦉' : 'クロちゃん🐾';
-          timeSpan.textContent = `${item.role === 'model' ? partnerName : '相棒'} (${item.time || ''})`;
+          const partnerDisplayName = `${meta.title}${meta.icon}`;
+          timeSpan.textContent = `${item.role === 'model' ? partnerDisplayName : meta.ownerCall} (${item.time || ''})`;
           row.appendChild(timeSpan);
 
           if (item.photoUrl) {
@@ -1834,8 +1861,8 @@
       reader.onload = (evt) => {
         const base64 = evt.target.result;
         const pkg = gPackageData;
-        const activeId = (pkg.characterId === 'shiro' || pkg.settings?.activeCharacter === 'shiro') ? 'shiro' : 'kuro';
-        const poolKey = activeId === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${activeId}_${gCurrentDateKey}`;
+        const meta = getPackageCharacterMeta(pkg);
+        const poolKey = meta.id === 'kuro' ? `kuro_daily_photos_${gCurrentDateKey}` : `kuro_daily_photos_${meta.id}_${gCurrentDateKey}`;
 
         if (!pkg.dailyPhotoPools) pkg.dailyPhotoPools = {};
         if (!pkg.dailyPhotoPools[poolKey]) pkg.dailyPhotoPools[poolKey] = [];
@@ -1858,6 +1885,7 @@
             weather: '快晴',
             temperature: 22,
             content: '',
+            partnerComment: '',
             kuroComment: '',
             photo: base64,
             timestamp: Date.now()
@@ -1883,6 +1911,7 @@
           weather: '快晴',
           temperature: 22,
           content: diaryTextInput.value,
+          partnerComment: '',
           kuroComment: '',
           photo: null,
           timestamp: Date.now()
@@ -1894,12 +1923,16 @@
       diaryCharCounter.textContent = `${diaryTextInput.value.length} 文字`;
     };
 
+    // ★ partnerComment と kuroComment 双方に完全反映
     diaryCommentInput.oninput = () => {
       const pkg = gPackageData;
       if (!pkg) return;
       if (!pkg.diaries) pkg.diaries = [];
       let diary = pkg.diaries.find(d => d.dateKey === gCurrentDateKey);
-      if (diary) diary.kuroComment = diaryCommentInput.value;
+      if (diary) {
+        diary.partnerComment = diaryCommentInput.value;
+        diary.kuroComment = diaryCommentInput.value;
+      }
     };
 
     function openZoom(src, caption) {
@@ -1936,6 +1969,13 @@
     function renderMemoriesAndSettingsUI() {
       const pkg = gPackageData;
       if (!pkg) return;
+      const meta = getPackageCharacterMeta(pkg);
+
+      const memTitle = document.getElementById('mem-modal-title');
+      if (memTitle) memTitle.textContent = `${meta.title}の記憶帳 ＆ 音声辞書 ＆ システム設定`;
+
+      const memSaveBtnText = document.getElementById('btn-save-memories-text');
+      if (memSaveMemBtnText) memSaveBtnText.textContent = `${meta.title}の記憶の変更を保存するニャ！`;
 
       memoriesContainer.innerHTML = '';
       const memories = Array.isArray(pkg.memories) ? pkg.memories : [];
@@ -1987,7 +2027,7 @@
       const curThemeText = themeLabelMap[s.theme] || s.theme || '🌸 ノーマル（サクラピンク）';
 
       settingsViewGrid.innerHTML = `
-        <div><b>パートナー:</b> ${s.activeCharacter === 'shiro' ? '🦉 シロくん（ホウ博士）' : '🐾 クロちゃん'}</div>
+        <div><b>パートナー:</b> ${meta.icon} ${meta.title}</div>
         <div><b>VoiceVox話者:</b> ${s.speakerId || '10'}</div>
         <div><b>話速:</b> ${s.voiceRate || '1.05'}</div>
         <div><b>ボタン音声:</b> ${s.buttonFeedback || 'voice'}</div>
@@ -2131,8 +2171,8 @@
       const pad = (n) => String(n).padStart(2, '0');
       const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
       const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-      const partnerName = gPackageData.characterId === 'shiro' ? 'シロくん' : 'クロちゃん';
-      const filename = `AIペット_${partnerName}_編集済_${ymd}_${hm}.json`;
+      const meta = getPackageCharacterMeta(gPackageData);
+      const filename = `AIペット_${meta.title}_編集済_${ymd}_${hm}.json`;
 
       gPackageData.exportedAt = now.toLocaleString('ja-JP');
 
