@@ -1,8 +1,8 @@
-// [稼働Ver 作業版 Rev.18] 単一状態機械（State Machine）一元化・応答オブジェクト正規化・ステータス完全同期・UI生命感100%維持
+// [稼働Ver 作業版 Rev.19] リアル装飾描画プラグイン完全共通化・パートナー切替動的生成・単一状態機械（State Machine）一元化・UI生命感100%維持
 /* ==========================================================================
    AIペット アプリケーションUI ＆ 思考統括司令塔 (app.js)
    - 【責務分離】core_engine.js の基盤機能（音声・GPS・ストレージ・TextFormatter）を基にUIと思考を統括
-   - MODULE 4: キャラクター描画 ＆ まぶた・装飾制御（CatAvatarRenderer：スタイリッシュ造形＆両手バンザイ肉球Happy完全同期）
+   - MODULE 4: キャラクター描画 ＆ まぶた・装飾制御（CatAvatarRenderer：完全プラグイン化されたリアル装飾SVGの動的注入）
    - MODULE 5: Gemini AI思考エンジン（AIThoughtEngine：直近写真の自動マルチモーダル再添付・3段階タイムアウト 8s➔16s➔30s）
    - MODULE 6: 中央司令塔（AppCore：単一状態機械 State Machine 一元管理・応答オブジェクト正規化・おやびんとの絆重視・タイマー・日記帳・設定モーダル・ライフサイクル）
    - ブート処理: bootAIApp（三重起動安全ガード）
@@ -115,40 +115,10 @@ class CatAvatarRenderer {
     });
   }
 
+  // ★【完全プラグイン化】ハードコードを全廃し、各キャラクタープラグインの getRealAccessorySvg() から取得
   _renderAllAccessories() {
     const cur = getCurChar();
-    let svgContent = "";
-
-    if (cur.id === 'shiro' && cur.getRealAccessorySvg) {
-      svgContent = cur.getRealAccessorySvg();
-    } else {
-      svgContent = `
-        <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
-          <defs>
-            <pattern id="stripe-bw-real" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-              <rect width="4" height="8" fill="#111827"/>
-              <rect width="4" height="8" fill="#ffffff" x="4"/>
-            </pattern>
-          </defs>
-          <g class="real-hat-group">
-            <path d="M45 42 Q70 34 95 42 L92 49 Q70 41 48 49 Z" fill="#1e293b"/>
-            <polygon points="70,18 116,32 70,46 24,32" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
-            <circle cx="70" cy="32" r="3" fill="#eab308"/>
-            <g class="mortar-tassel">
-              <path d="M70 32 Q95 35 102 54" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
-              <polygon points="99,54 105,54 107,68 97,68" fill="#eab308"/>
-            </g>
-          </g>
-          <g class="real-glasses-group">
-            <circle cx="42" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
-            <circle cx="42" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
-            <circle cx="98" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
-            <circle cx="98" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
-            <path d="M60 84 Q70 79 80 84" stroke="#090d16" stroke-width="4.5" fill="none"/>
-          </g>
-        </svg>
-      `;
-    }
+    const svgContent = cur.getRealAccessorySvg ? cur.getRealAccessorySvg() : "";
 
     ['acc-idle', 'acc-talking', 'acc-thinking', 'acc-happy', 'adjust-glasses-overlay'].forEach(id => {
       const el = document.getElementById(id);
@@ -760,7 +730,7 @@ class AIThoughtEngine {
           content = content.replace(/^【[^】]+】\s*\n*/u, '').trim();
           content = content.replace(/^(?:今日|きょう)は[0-9０-９一二三四五六七八九〇]+年[^\n。！？]*[。！？\n]\s*/u, '').trim();
 
-          const pool = StorageManager.getDailyPhotoPool(lifeKey);
+          const pool = StorageManager.getDailyPhotoPool(lifeKey, cur.id);
           const chosenPhoto = (pool && pool.length > 0) ? pool[0].base64 : null;
 
           return { success: true, diaryText: content, kuroComment: extractedComment, selectedPhoto: chosenPhoto };
@@ -908,7 +878,7 @@ const AppCore = {
       this.avatar.applyMode(this.avatar.mode);
     }
 
-    this.memories = StorageManager.loadMemories(cur.defaultMemories);
+    this.memories = StorageManager.loadMemories(cur.defaultMemories, cur.id);
     this._renderMemories();
     this._restoreTimelineHistory();
     this._updateStorageMonitorUI();
@@ -1188,11 +1158,12 @@ const AppCore = {
       const yInfo = TimeProvider.getYesterdayLifeInfo();
       const yKey = yInfo.key;
       const yFullDate = yInfo.fullDate;
+      const cur = getCurChar();
 
-      const yLogs = StorageManager.getDailyLogs(yKey);
+      const yLogs = StorageManager.getDailyLogs(yKey, cur.id);
       if (!yLogs || yLogs.length < 2) return;
 
-      const existingDiary = StorageManager.getDiary(yKey);
+      const existingDiary = StorageManager.getDiary(yKey, cur.id);
       const isProper = StorageManager.isProperDiary(existingDiary);
       const prevLogCount = existingDiary?.logCountAtSave || 0;
       const hasNewLogs = (yLogs.length > prevLogCount);
@@ -1201,15 +1172,14 @@ const AppCore = {
 
       const res = await this.ai.generateDailyDiarySummary(yLogs, yKey, yFullDate);
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, yLogs.length, res.kuroComment);
+        StorageManager.saveDiary(res.diaryText, yKey, yFullDate, res.selectedPhoto, yLogs.length, res.kuroComment, cur.id);
 
-        const cur = getCurChar();
         const autoNotice = hasNewLogs && isProper
           ? (cur.id === 'shiro' ? `助手よ！昨日の日誌に夜の会話も追加しておいたホ！🦉` : `おやびん！昨日の日記に夜のお話しも追加しておいたニャン🐾`)
           : (cur.id === 'shiro' ? `助手よ！昨日の研究観察日誌を書いておいたホ！日誌を見てみるが良いホ！🦉` : `おやびん！昨日の思い出絵日記を書いておいたニャン🐾 日記帳を見てみてニャ♪`);
 
         this.renderBubble('model', autoNotice);
-        const savedDiary = StorageManager.getDiary(yKey);
+        const savedDiary = StorageManager.getDiary(yKey, cur.id);
         if (savedDiary) this.renderDiaryCard(savedDiary);
 
         this._updateStorageMonitorUI();
@@ -1243,7 +1213,6 @@ const AppCore = {
     this._scrollToLatest(false);
   },
 
-  // ★ 音声イベント通知を一元バインド
   _setupAudioCallbacks() {
     this.audio.onSpeechStart = () => {
       this.transitionTo('SPEAKING');
@@ -1356,7 +1325,8 @@ const AppCore = {
 
     let cleanBody = (diaryData.content || '').replace(/^【[^】]+】\s*\n*/u, '').trim();
     cleanBody = TextFormatter.formatDisplayText(cleanBody);
-    const cleanComment = diaryData.kuroComment ? TextFormatter.formatDisplayText(diaryData.kuroComment) : "";
+    const comment = diaryData.partnerComment || diaryData.kuroComment || "";
+    const cleanComment = comment ? TextFormatter.formatDisplayText(comment) : "";
 
     card.innerHTML = `
       <div class="timeline-diary-header">
@@ -1622,10 +1592,10 @@ const AppCore = {
       this.transitionTo('THINKING');
       if (this.avatar) this.avatar.setEmotion('thinking');
       const timeInfo = TimeProvider.getCurrentInfo();
-      const currentLogs = StorageManager.getDailyLogs(timeInfo.lifeLogKey);
+      const currentLogs = StorageManager.getDailyLogs(timeInfo.lifeLogKey, cur.id);
       const res = await this.ai.generateDailyDiarySummary(currentLogs);
       if (res.success && res.diaryText) {
-        StorageManager.saveDiary(res.diaryText, timeInfo.lifeLogKey, timeInfo.lifeFullDate, res.selectedPhoto, currentLogs.length, res.kuroComment);
+        StorageManager.saveDiary(res.diaryText, timeInfo.lifeLogKey, timeInfo.lifeFullDate, res.selectedPhoto, currentLogs.length, res.kuroComment, cur.id);
         const rep = cur.id === 'shiro'
           ? "本日の研究観察日誌を記録したホ！上の『📖 日記帳』から確認できるホ！🦉"
           : "今日の日記を書き込みましたニャン🐾 上の『📖 日記帳』から読めるニャ！";
@@ -1761,7 +1731,6 @@ const AppCore = {
         if (!isPhotoAlreadyLogged) {
           StorageManager.appendChatLog('user', promptText);
         }
-        // 確定した表示テキストを保存
         StorageManager.appendChatLog('model', res.displayText);
 
         this.audio.speak(res.speechText, null, () => {
@@ -1995,10 +1964,10 @@ const AppCore = {
     if (prevBtn) prevBtn.disabled = (curIdx >= dateKeys.length - 1);
     if (nextBtn) nextBtn.disabled = (curIdx <= 0);
 
-    const diary = StorageManager.getDiary(curDateKey);
+    const diary = StorageManager.getDiary(curDateKey, cur.id);
     const isProper = StorageManager.isProperDiary(diary);
-    const photoPool = StorageManager.getDailyPhotoPool(curDateKey);
-    const dayLogs = StorageManager.getDailyLogs(curDateKey);
+    const photoPool = StorageManager.getDailyPhotoPool(curDateKey, cur.id);
+    const dayLogs = StorageManager.getDailyLogs(curDateKey, cur.id);
 
     const prevLogCount = diary?.logCountAtSave || 0;
     const hasNewLogs = (dayLogs && dayLogs.length > prevLogCount);
@@ -2073,7 +2042,7 @@ const AppCore = {
           : `今日もおやびんと一緒に過ごせて幸せな一日だったニャン🐾`;
         const comment = isShiro ? "助手を信頼しているホ！" : "おやびん大好きニャ！";
         const photoToSave = (photoPool && photoPool.length > 0) ? photoPool[0].base64 : null;
-        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoToSave, 0, comment);
+        StorageManager.saveDiary(dummyText, curDateKey, fullDate, photoToSave, 0, comment, cur.id);
         this._renderStudioDiaryPage();
         this._updateStorageMonitorUI();
       });
@@ -2087,6 +2056,8 @@ const AppCore = {
 
     const sketchTitle = isShiro ? `本日の観測スケッチ（ホウ博士 筆）` : `クロのお絵描きスケッチ（クロ 筆）`;
     const sketchSubtitle = isShiro ? `『今日は写真の代わりにボクがスケッチを描いたホ！』` : `『写真の代わりにクロが一生懸命お絵描きしたニャン♪』`;
+
+    const commentDisp = diary.partnerComment || diary.kuroComment || "";
 
     pageContainer.innerHTML = `
       <div class="book-page-sheet">
@@ -2135,7 +2106,7 @@ const AppCore = {
 
         <div class="studio-diary-comment-box">
           <span class="studio-diary-comment-label">${isShiro ? '🦉' : '🐾'} ${cur.title || cur.name}のひとこと:</span>
-          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${diary.kuroComment || ""}</textarea>
+          <textarea class="studio-diary-comment-textarea" id="studio-diary-comment" rows="2" placeholder="（ひとこと記録なし）">${commentDisp}</textarea>
         </div>
       </div>
     `;
@@ -2149,12 +2120,13 @@ const AppCore = {
 
     document.getElementById('studio-diary-text')?.addEventListener('input', (e) => {
       diary.content = e.target.value;
-      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
+      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.partnerComment || diary.kuroComment, cur.id);
     });
 
     document.getElementById('studio-diary-comment')?.addEventListener('input', (e) => {
+      diary.partnerComment = e.target.value;
       diary.kuroComment = e.target.value;
-      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
+      StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.partnerComment, cur.id);
     });
 
     document.getElementById('book-photo-box')?.addEventListener('click', () => {
@@ -2167,9 +2139,9 @@ const AppCore = {
 
     document.getElementById('btn-del-cur-diary')?.addEventListener('click', () => {
       if (window.confirm(`「${diary.fullDate}」の日記を削除しますか？\n（※会話ログやお写真はそのまま安全に残ります）`)) {
-        let allDiaries = StorageManager.loadAllDiaries();
+        let allDiaries = StorageManager.loadAllDiaries(cur.id);
         allDiaries = allDiaries.filter(d => d.dateKey !== curDateKey);
-        StorageManager.saveAllDiaries(allDiaries);
+        StorageManager.saveAllDiaries(allDiaries, cur.id);
         this._renderStudioDiaryPage();
         this._updateStorageMonitorUI();
       }
@@ -2180,7 +2152,7 @@ const AppCore = {
         if (e.target.closest('.btn-snap-del')) return;
         const selected = photoPool[parseInt(item.dataset.idx, 10)].base64;
         diary.photo = selected;
-        StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.kuroComment);
+        StorageManager.saveDiary(diary.content, curDateKey, diary.fullDate, diary.photo, diary.logCountAtSave, diary.partnerComment || diary.kuroComment, cur.id);
         this._renderStudioDiaryPage();
       };
     });
@@ -2190,7 +2162,7 @@ const AppCore = {
         e.stopPropagation();
         if (window.confirm("この写真を削除しますか？")) {
           const delIdx = parseInt(btn.dataset.del, 10);
-          StorageManager.removePhotoFromDailyPool(curDateKey, delIdx);
+          StorageManager.removePhotoFromDailyPool(curDateKey, delIdx, cur.id);
           this._renderStudioDiaryPage();
         }
       };
@@ -2202,7 +2174,7 @@ const AppCore = {
     Toast.show(`記録を一生懸命書いている${cur.id === 'shiro' ? 'ホ…📖' : 'ニャ…📖'}`, "info");
     const res = await this.ai.generateDailyDiarySummary(dayLogs, targetDateKey, targetFullDate);
     if (res.success && res.diaryText) {
-      StorageManager.saveDiary(res.diaryText, targetDateKey, targetFullDate, res.selectedPhoto, dayLogs.length, res.kuroComment);
+      StorageManager.saveDiary(res.diaryText, targetDateKey, targetFullDate, res.selectedPhoto, dayLogs.length, res.kuroComment, cur.id);
       Toast.show(`記録をまとめあげた${cur.id === 'shiro' ? 'ホ！📖✨' : 'ニャ！📖✨'}`, "success");
       this._renderStudioDiaryPage();
       this._updateStorageMonitorUI();
@@ -2499,16 +2471,18 @@ const AppCore = {
       const reader = new FileReader();
       reader.onload = async (evt) => {
         try {
-          await StorageManager.importAndReplaceDataPackage(JSON.parse(evt.target.result));
-          this.memories = StorageManager.loadMemories(getCurChar().defaultMemories);
-          this._renderMemories();
-          this._restoreTimelineHistory();
-          this._updateStorageMonitorUI();
-          this._updateCharacterUI();
-          this._syncEyelidInputsToActiveChar();
-          this.updateTopHeaderClockWeatherUI();
-          const restoreAck = getCurChar().id === 'shiro' ? "データを安全に完全復元したホ！🎉" : "データを安全に完全復元したニャ！🎉";
-          Toast.show(restoreAck, "success");
+          const success = await StorageManager.importAndReplaceDataPackage(JSON.parse(evt.target.result));
+          if (success !== false) {
+            this.memories = StorageManager.loadMemories(getCurChar().defaultMemories);
+            this._renderMemories();
+            this._restoreTimelineHistory();
+            this._updateStorageMonitorUI();
+            this._updateCharacterUI();
+            this._syncEyelidInputsToActiveChar();
+            this.updateTopHeaderClockWeatherUI();
+            const restoreAck = getCurChar().id === 'shiro' ? "データを安全に合流復元したホ！🎉" : "データを安全に合流復元したニャ！🎉";
+            Toast.show(restoreAck, "success");
+          }
         } catch(err) {
           Toast.show("読み込み失敗: " + err.message, "error");
         }
