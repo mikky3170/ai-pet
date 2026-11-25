@@ -1,10 +1,11 @@
-// [稼働Ver 作業版 Rev.15] 話者バトンタッチ完全撤廃・おやびん1対1対話原点回帰・JSON構文防護＆末尾アイコン透明設計
+// [稼働Ver 作業版 Rev.16] リアル装飾SVG（白黒ストライプメガネ＆帽子）完全プラグイン化・プラガブル多態性確立・単一1対1対話100%維持
 /* ==========================================================================
    キャラクター定義プラグイン: クロちゃん (char_kuro.js)
    - ノルウェージャンフォレストキャット（1歳の女の子・前世は大発明家）
    - 【実写完全一致スタイリッシュ造形】気品ある立ち姿・首元から胸に広がる豊かなシルバー胸毛・澄んだゴールドライムアイ・極太ロングテイル
    - 【白黒ストライプリアル伊達メガネ】実写写真と完全一致する白黒斜めストライプフレーム＆レンズ斜め反射光ハイライト搭載
    - 【足元造形完全整合】前足（指の筋2本）と後ろ足（お座り筋なし）の解剖学的完全整合
+   - 【リアル装飾完全プラグイン化】getRealAccessorySvg() を自己完結提供し、コアエンジン（app.js）のハードコードを完全排除
    - 飼い主さんのことを「おやびん」と呼び、座ると膝の上、寝転ぶとおなかに乗ってくる甘えん坊
    - VOICEVOX 話者ID: 10（雨晴はう）推奨
    - 【セリフ加工の完全全廃】プログラムによる語尾のコネ回し・捏造を撤廃し、末尾にアイコン（🐾）を1つ添える透明設計
@@ -175,6 +176,36 @@ ${modeBlock}
 
 【本日の会話履歴】
 ${historyText || '今日もおやびんと一緒に過ごせて最高に幸せな一日だったニャン🐾'}`;
+  },
+
+  // ★ リアル写真モード用 装飾SVG（白黒ストライプ伊達メガネ＆博士帽）完全プラグイン化
+  getRealAccessorySvg() {
+    return `
+      <svg viewBox="0 0 140 140" style="width:100%; height:100%;">
+        <defs>
+          <pattern id="stripe-bw-real" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+            <rect width="4" height="8" fill="#111827"/>
+            <rect width="4" height="8" fill="#ffffff" x="4"/>
+          </pattern>
+        </defs>
+        <g class="real-hat-group">
+          <path d="M45 42 Q70 34 95 42 L92 49 Q70 41 48 49 Z" fill="#1e293b"/>
+          <polygon points="70,18 116,32 70,46 24,32" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+          <circle cx="70" cy="32" r="3" fill="#eab308"/>
+          <g class="mortar-tassel">
+            <path d="M70 32 Q95 35 102 54" stroke="#ca8a04" stroke-width="2.2" fill="none"/>
+            <polygon points="99,54 105,54 107,68 97,68" fill="#eab308"/>
+          </g>
+        </g>
+        <g class="real-glasses-group">
+          <circle cx="42" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
+          <circle cx="42" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
+          <circle cx="98" cy="85" r="18" fill="rgba(255, 255, 255, 0.2)" stroke="#090d16" stroke-width="4.5"/>
+          <circle cx="98" cy="85" r="18" fill="none" stroke="url(#stripe-bw-real)" stroke-width="3"/>
+          <path d="M60 84 Q70 79 80 84" stroke="#090d16" stroke-width="4.5" fill="none"/>
+        </g>
+      </svg>
+    `;
   },
 
   // ★ 実写完全一致スタイリッシュ・ベクターSVGアバター（白黒ストライプメガネ＆前足後ろ足筋整合）
